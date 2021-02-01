@@ -1,4 +1,3 @@
-
 // special symbols used by the construction algorithm:
 //   they cannot appear in the input file 
 //   the 0 symbol is used in the final BWT file as the EOF char  
@@ -25,6 +24,8 @@
 #define EXTSA    "sa"
 #define EXTSSA   "ssa"
 #define EXTESA   "esa"
+#define EXTOFF   "offset"
+#define EXTRFAS  "rfasta"
 
 
 void die(const char *s);
