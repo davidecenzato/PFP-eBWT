@@ -100,7 +100,7 @@ extern "C" {
 }
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
-        
+#include "parse.hpp"
 
 using namespace std;
 using namespace __gnu_cxx;
@@ -121,6 +121,7 @@ struct Args {
    bool SAinfo = false;   // compute SA information
    bool is_fasta = false;  // read a fasta file
    bool compress = false; // parsing called in compress mode
+   bool p_val = false; // validate the parse
    int th=0;              // number of helper threads
    int verbose=0;         // verbosity level
 };
@@ -168,7 +169,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
     puts("");
   
     string sarg;
-    while ((c = getopt( argc, argv, "p:w:fsht:v") ) != -1) {
+    while ((c = getopt( argc, argv, "p:w:fasht:v") ) != -1) {
        switch(c) {
          case 's':
          arg.SAinfo = true; break;
@@ -182,6 +183,8 @@ void parseArgs( int argc, char** argv, Args& arg ) {
          arg.p = stoi( sarg ); break;
          case 'f':
          arg.is_fasta = true; break;
+         case 'a':
+         arg.p_val = true; break;
          case 't':
          sarg.assign( optarg );
          arg.th = stoi( sarg ); break;
@@ -499,31 +502,68 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
   // open parse files. the old parse can be stored in a single file or in multiple files
   mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
   FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
+  FILE *lenf = open_aux_file(arg.inputFileName.c_str(), EXTLEN, "wb");
+  FILE *strt = open_aux_file(arg.inputFileName.c_str(), EXTSTART, "wb");
   
   // recompute occ as an extra check
   vector<occ_int_t> occ(wfreq.size()+1,0); // ranks are zero based
   uint64_t hash;
+  uint32_t len = 0, start = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
+  //size_t s = fwrite(&start,sizeof(start),1,strt);
+  //if(s!=1) die("Error writing to new parse file");
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
     if(s==0) break;
     if(s!=1) die("Unexpected parse EOF");
     if(hash != hash_sep){
-    word_int_t rank = wfreq.at(hash).rank;
-    occ[rank]++;
-    s = fwrite(&rank,sizeof(rank),1,newp);
-    if(s!=1) die("Error writing to new parse file");}
-    else{
-        word_int_t rank = 0;
+        len++;
+        word_int_t rank = wfreq.at(hash).rank;
+        occ[rank]++;
         s = fwrite(&rank,sizeof(rank),1,newp);
         if(s!=1) die("Error writing to new parse file");}
+    else{
+        s = fwrite(&start,sizeof(start),1,strt);
+        if(s!=1) die("Error writing to start file");
+        start += len;
+        word_int_t rank = 0;
+        s = fwrite(&rank,sizeof(rank),1,newp);
+        if(s!=1) die("Error writing to new parse file");
+        s = fwrite(&len,sizeof(len),1,lenf);
+        if(s!=1) die("Error writing to lengths file");
+        len=0;}
     }
   if(fclose(newp)!=0) die("Error closing new parse file");
   if(mfclose(moldp)!=0) die("Error closing old parse segment");
+  if(fclose(lenf)!=0) die("Error closing lengths file");
+  if(fclose(strt)!=0) die("Error closing starting positions file");
   // check old and recomputed occ coincide
   for(auto& x : wfreq)
     assert(x.second.occ == occ[x.second.rank]);
+}
+
+void remapOffset(Args &arg)
+{
+    FILE *newoff = open_aux_file(arg.inputFileName.c_str(), EXTOFF, "wb");
+    uint64_t offset = 0;
+    for(int i=0; i<arg.th; i++){
+        string filename = arg.inputFileName + string(".") + to_string(i) + string(".offset");
+        //cout << "filename: " << filename << endl;
+        FILE *off = fopen(filename.c_str(), "r");
+        //int fn = fileno(off);
+        //cout << fn << endl;
+        while(true){
+            size_t s = fread(&offset,sizeof(offset),1,off);
+            //cout << "off: " << offset << endl;
+            if(s==0) break;
+            if(s!=1) die("Unexpected parse EOF");
+            s = fwrite(&offset,sizeof(offset),1,newoff);
+            if(s!=1) die("Error writing to offset file");
+        }
+        if(fclose(off)!=0) die("Error closing old offset segment");
+    }
+    if(fclose(newoff)!=0) die("Error closing new offset file");
 }
 
 void remapDict(vector<string> &dictionary, FILE *dict_file){
@@ -540,10 +580,11 @@ void remapDict(vector<string> &dictionary, FILE *dict_file){
 
 }
 
-void remapOffset(vector<uint64_t> &offsets, FILE *offset_file){
+void firstOffset(vector<uint64_t> &offsets, FILE *offset_file){
     
     uint64_t offset,prev_offset;
     int s = fread(&offset,sizeof(offset),1,offset_file);
+    cout << offset << endl;
     offsets.push_back(offset-1);
     prev_offset = offset;
     while(s == 1){
@@ -614,6 +655,26 @@ void ParsetoFasta(vector<string> &dictionary, vector<uint64_t> &offsets, FILE *p
             header = "\n>" + to_roman(seq_no) + "\n"; 
         }
     }
+}
+
+void parse_validation(Args arg){
+    
+    cout << "Starting the validation..." << endl;
+    time_t start_wc = time(NULL);
+    FILE *dict_file = open_aux_file(arg.inputFileName.c_str(), EXTDICT, "r");
+    FILE *offset_file = fopen((arg.inputFileName+".offset").c_str(), "r");
+    FILE *parse_file = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "r");
+    FILE *refasta_file = open_aux_file(arg.inputFileName.c_str(), EXTRFAS, "wb");
+    cout << "Creating dictionary array..." << endl;
+    vector<string> dictionary;
+    vector<uint64_t> offsets;
+    remapDict(dictionary,dict_file);
+    cout << "dict size: " << dictionary.size() << endl;
+    cout << "Rebuilding dictionary file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
+    cout << "creating offset file..." << endl;
+    firstOffset(offsets,offset_file);
+    ParsetoFasta(dictionary,offsets,parse_file,refasta_file,arg.w);
+
 }
 
 int main(int argc, char** argv) {
@@ -705,24 +766,17 @@ int main(int argc, char** argv) {
     remapParse(arg, wordFreq);
     cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
     cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";
-    
+    remapOffset(arg);
+   
     // validation
-    cout << "Starting the validation..." << endl;
-    start_wc = time(NULL);
-    FILE *dict_file = open_aux_file(arg.inputFileName.c_str(), EXTDICT, "r");
-    FILE *offset_file = fopen((arg.inputFileName+".offset").c_str(), "r");
-    FILE *parse_file = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "r");
-    FILE *refasta_file = open_aux_file(arg.inputFileName.c_str(), EXTRFAS, "wb");
-    cout << "Creating dictionary array..." << endl;
-    vector<string> dictionary;
-    vector<uint64_t> offsets;
-    remapDict(dictionary,dict_file);
-    cout << "dict size: " << dictionary.size() << endl;
-    cout << "Rebuilding dictionary file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
-    cout << "creating offset file..." << endl;
-    remapOffset(offsets,offset_file);
-    ParsetoFasta(dictionary,offsets,parse_file,refasta_file,arg.w);
+    if(arg.p_val){cout << "Computing parse validation..." << endl;
+                  parse_validation(arg);}
+    
+    cout << "Computing eBWT of the parse..." << endl;
+    parse pars(arg.inputFileName, totDWord+1);
+    
+    if(arg.p_val){cout << "Computing eBWT validation..." << endl;
+                  ebwt_validation(pars.ebwtP,pars.saP,pars.stp,pars.len,arg.inputFileName);}
     
     return 0;
 }
-
