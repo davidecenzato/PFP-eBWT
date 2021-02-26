@@ -29,7 +29,7 @@ typedef std::tuple<int,int,int> triplet;
 class parse{
 private:
     std::vector<uint32_t> p;
-    std::vector<uint32_t> sts;
+    std::vector<uint64_t> sts;
     std::vector<uint32_t> slen;
     std::vector<uint32_t> saP;
     sdsl::bit_vector::rank_1_type rank_b_d;
@@ -67,7 +67,7 @@ public:
     read_file(tmp_filename.c_str(), sts);
     // create bit vector for starting positions
     sdsl::bit_vector b_d(size,0);
-    for(int i=0;i<sts.size();i++){b_d[sts[i]]=1;}
+    for(uint64_t i=0;i<sts.size();i++){b_d[sts[i]]=1;}
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
     
     // read lengths

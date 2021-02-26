@@ -429,7 +429,8 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
   // recompute occ as an extra check
   vector<occ_int_t> occ(wfreq.size()+1,0); // ranks are zero based
   uint64_t hash;
-  uint32_t len = 0, start = 0;
+  uint32_t len = 0;
+  uint64_t start = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
   //size_t s = fwrite(&start,sizeof(start),1,strt);
