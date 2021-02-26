@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+
+import sys, time, argparse, subprocess, os.path
+
+Description = """
+Tool to build the EBWT for higly repetive files.
+"""
+
+dirname = os.path.dirname(os.path.abspath(__file__))
+parse_exe       =  os.path.join(dirname, "newscan.x")
+parseNT_exe     =  os.path.join(dirname, "newscanNT.x")
+pfebwt_exe      =  os.path.join(dirname, "pfebwtNT.x")
+
+def main():
+    parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('input', help='input file name', type=str)
+    parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
+    parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
+    parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
+    #parser.add_argument('-s',  help='compute the start run-length sampled Suffix Array',action='store_true')
+    #parser.add_argument('-e',  help='compute the end run-length sampled Suffix Array',action='store_true')
+    #parser.add_argument('-S',  help='compute the full Suffix Array',action='store_true')
+    #parser.add_argument('-k',  help='keep temporary files',action='store_true')
+    parser.add_argument('-v',  help='verbose',action='store_true')
+    #parser.add_argument('-c',  help='check BWT using SACA-K',action='store_true')
+    #parser.add_argument('-f', help='read fasta',action='store_true')
+    #parser.add_argument('--sum', help='compute output files sha256sum',action='store_true')
+    parser.add_argument('--parsing',  help='stop after the parsing phase (debug only)',action='store_true')
+    parser.add_argument('--compress',  help='compress output of the parsing phase (debug only)',action='store_true')
+    args = parser.parse_args()
+
+    if args.f and args.t > 0 and (".fq" in args.input or ".fastq" in args.input or ".fnq" in args.input):
+        print("bigbwt does not current support FASTQ format! Exiting...")
+        return
+
+    #if(args.S and (args.s or args.e)):
+    #    print("You can either compute the full SA or a sample of it, not both. Exiting...")
+    #    return
+
+    logfile_name = args.input + ".log"
+    # get main bigbwt directory
+    args.bigbwt_dir = os.path.split(sys.argv[0])[0]
+    print("Sending logging messages to file:", logfile_name)
+    with open(logfile_name,"a") as logfile:
+
+        # ---------- Parsing of the input file
+        start0 = start = time.time()
+
+        if args.t>0:
+            command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
+                    exe = os.path.join(args.bigbwt_dir,parse_exe),
+                    wsize=args.wsize, modulus = args.mod, th=args.t, file=args.input)
+        else:
+            command = "{exe} {file} -w {wsize} -p {modulus}".format(
+                    exe = os.path.join(args.bigbwt_dir,parseNT_exe),
+                    wsize=args.wsize, modulus = args.mod, file=args.input)
+
+        #if (args.s or args.e or args.S): command += " -s"
+        if args.v: command += " -v"
+        #if args.parsing or args.compress: command += " -c"
+        #if args.f: command += " -f"
+        #only fasta supported
+        command += " -f"
+        print("==== Parsing. Command:", command)
+        if(execute_command(command,logfile,logfile_name)!=True):
+            return
+        print("Elapsed time: {0:.4f}".format(time.time()-start))
+        if args.parsing:
+            # delete temporary parsing files 
+            command = "rm -f {file}.parse_old {file}.last {file}.start {file}.len {file}.offset {file}.occ".format(file=args.input)
+            if(execute_command(command,logfile,logfile_name)!=True):
+                return
+            print("==== Stopping after the parsing phase as requested")      
+            return
+        elif args.compress:
+            # save parsing files 
+            start = time.time()
+            command = "tar -cJf {file}.parse.txz {file}.parse {file}.dicz".format(file=args.input)
+            print("==== Compressing. Command:", command)
+            if(execute_command(command,logfile,logfile_name,env={"XZ_OPT":"-9"})!=True): 
+                return
+            print("Elapsed time: {0:.4f}".format(time.time()-start))
+            delete_temp_files(args,logfile,logfile_name)
+            print("==== Done: Parsing output xz-compressed as requested")
+            return 
+
+        # ----------- Computing the eBWT of the text
+        start = time.time()
+        parse_size = os.path.getsize(args.input+".parse")/4
+        if(parse_size >=  (2**32-1) ):
+            print("Sorry, the parse contains %d words" %  parse_size )
+            print("which is more than my current limit 2^32-2")
+            print("Please re-run the program with a larger modulus (currently %d)" % args.mod)
+            sys.exit(1)  
+        #elif(parse_size >=  (2**31-1) ):
+        #   command = "{exe} {file}".format(
+        #           exe = os.path.join(args.bigbwt_dir,parsebwt_exe64), file=args.input)
+        else:
+            command = "{exe} {file} -w {wsize}".format(
+                     exe = os.path.join(args.bigbwt_dir,pfebwt_exe), wsize=args.wsize, file=args.input)
+        #if (args.s or args.e or args.S): command += " -s"
+        #if (args.t>0): command += " -t " + str(args.t)
+        print("==== Computing BWT of Text. Command:", command)
+        if(execute_command(command,logfile,logfile_name)!=True):
+            return
+        print("Elapsed time: {0:.4f}".format(time.time()-start));      
+
+
+
+
+# execute command: return True is everything OK, False otherwise
+def execute_command(command,logfile,logfile_name,env=None):
+  try:
+    #subprocess.run(command.split(),stdout=logfile,stderr=logfile,check=True,env=env)
+    subprocess.check_call(command.split(),stdout=logfile,stderr=logfile,env=env)
+  except subprocess.CalledProcessError:
+    print("Error executing command line:")
+    print("\t"+ command)
+    print("Check log file: " + logfile_name)
+    return False
+  return True
+  
+
+if __name__ == '__main__':
+    main()

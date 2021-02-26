@@ -35,7 +35,7 @@
 #include <sys/mman.h> // for mmap
 #include <unistd.h>
 #include <sys/stat.h>
- #include <fcntl.h>
+#include <fcntl.h>
 
 #include <sstream>      // std::stringstream
 
@@ -62,7 +62,6 @@
 //using namespace sdsl;
 
 typedef size_t size_type;
-typedef std::tuple<int,int,int> triplet;
 //typedef sd_vector<> bv_t;
 
 
@@ -231,8 +230,8 @@ void read_fasta_file(const char *filename, std::vector<T>& v){
         v.push_back(c);
         while(fread( &c, sizeof(char), 1,fd) == 1 && c!= '\n') v.push_back(c);
       }
-    }
-    fclose(fd);
+  	}
+  	fclose(fd);
 }
 
 
@@ -257,136 +256,46 @@ void read_fasta_file(const char *filename, std::vector<T>& v){
 
 bool sort_int (uint32_t i, uint32_t j) {return(i<j);}
 
-void countingSort(std::vector<uint32_t> vec, std::vector<uint32_t> &out, uint32_t max_val)
-{
-    std::vector<uint32_t> count(max_val,0);
-    for(size_t i=0; i<vec.size(); ++i)
-    {   
-        uint32_t cs = vec[i];
-        count[cs]++;
-    }  
-    std::vector<uint32_t> psum(count.size(),0);
-    for(size_t i=1; i<count.size(); ++i)
-    {
-        psum[i] = psum[i-1] + count[i-1];
-    }  
-    std::vector<uint32_t> tmp(vec.size(), 0);
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        uint32_t cs = vec[i];
-        size_t index = psum[cs]++;
-        tmp[index] = i;
-    }
-    out = tmp;
-}
-
-void sortConjugatesMap(std::vector<uint32_t> &parse, std::vector<uint32_t> &sa, std::vector<uint32_t> &il, std::vector<uint32_t> &ebwt, std::vector<uint32_t> &sts, std::vector<uint32_t> &slen, uint32_t max_rank){
-    
-    std::queue<triplet> buckets;
-    uint32_t size = slen.back()+sts.back();
-    buckets.push({0,size,0});
-    sdsl::bit_vector::rank_1_type rank_b_d;
-    sdsl::bit_vector b_d(size,0);
-    for(int i=0;i<sts.size();i++){b_d[sts[i]]=1;}
-    rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
-    std::iota(sa.begin(),sa.end(),0);
-
-    while(!buckets.empty()){
-        auto bucket = buckets.front(); buckets.pop();
-        int start = std::get<0>(bucket);
-        int end   = std::get<1>(bucket);
-        int depth = std::get<2>(bucket);
-        
-        if((start < end)){
-            std::vector<uint32_t> count;
-            std::map <uint32_t,uint32_t> count_map;
-            for(size_t i=start; i<end; ++i)
-            {   
-                uint32_t cs = rank_b_d(sa[i]+1)-1;
-                size_t ind = sts[cs]+((sa[i]-sts[cs]+depth)%(slen[cs]));
-                uint32_t symb = parse[ind]-1;
-                if(count_map.find(symb)==count_map.end()){
-                    count_map.insert(std::pair<uint32_t,uint32_t>(symb,1));
-                }else{
-                    count_map.at(symb)++;
-                }
-            }
-            std::map <uint32_t,uint32_t> psum_map;
-            uint32_t pind = 0;
-            for(auto& x: count_map){
-                count.push_back(x.second);
-                psum_map.insert(std::pair<uint32_t,uint32_t>(x.first,pind));
-                pind++;
-            }
-            count_map.clear();
-            std::vector<uint32_t> psum(count.size(),0);
-            for(size_t i=1; i<count.size(); ++i)
-            {
-                psum[i] = psum[i-1] + count[i-1];
-            }   
-            std::vector<uint32_t> tmp(end - start, 0);
-            for (size_t i = start; i < end; ++i)
-            {
-                uint32_t cs = rank_b_d(sa[i]+1)-1;
-                size_t ind = sts[cs] + ((sa[i]-sts[cs]+depth)%(slen[cs]));
-                size_t index = psum[psum_map[parse[ind]-1]]++;
-                tmp[index] = sa[i];
-            }
-            for (uint32_t i=start; i<tmp.size()+start;i++){
-                sa[i] = tmp[i-start];
-            }
-            tmp.clear();
-            for(size_t i=0; i<count.size(); i++)
-            {
-                end = start + count[i];
-                if(end - start > 1 && depth < slen[0]*2){buckets.push({start,end,depth+1});}
-                start = end;
-            }     
-        }
-    }
-
-    uint32_t bchar = 0;
-    for (int i=0; i<sa.size();i++){
-        if(sa[i]==0 || rank_b_d(sa[i]+1) != rank_b_d(sa[i])){ 
-            bchar = parse[(sa[i]-1)+slen[rank_b_d(sa[i]+1)-1]]-1;
-            ebwt[i] = bchar;
-        }else{
-            bchar = parse[sa[i]-1]-1;
-            ebwt[i] = bchar;
-        }
-    }
-  
-    // counting sort on eBWT to obtain inverted list.
-    countingSort(ebwt,il,max_rank-1);
-
-}
 
 void ebwt_validation(std::vector<uint32_t> ebwt,std::vector<uint32_t> sa,std::vector<uint32_t> sts, std::vector<uint32_t> slen, std::string inpfname){
-    //very ineficient and slow function to reverse the eBWT. 
     std::string fname = inpfname + std::string(".parseval");
     FILE* fp = fopen(fname.c_str(), "wb");
     
     std::vector<uint32_t> f = ebwt;
     std::vector<uint32_t> reparse;
+    //sort(f.begin(),f.end(),sort_int);
     std::sort(f.begin(),f.end());
     uint32_t nsq = 0;
     uint32_t br_count = 0;
     for(int i=0;i<sts.size();i++){
         auto it = find(sa.begin(),sa.end(),sts[i]);
         int index = it - sa.begin();
+        //cout << "index: " << index << endl;
+        //cout << "sts[i]: " << sts[i] << endl;
+        //cout << "slen[i]: " << slen[i] << endl;
         for(int j=0;j<slen[i];j++){
             br_count ++;
+            //cout << "index: " << index << endl;
+            //cout << "p: " << parse[sa[index]]-1 << endl;
+            //cout << "p: " << bwt[index] << endl;
             uint32_t p = ebwt[index];
             reparse.insert(reparse.begin()+sts[i]+nsq,ebwt[index]+1);
             uint32_t rn = 0;
             for(int x=0;x < index; x++){if(ebwt[x]==p) rn++;}
+            //cout << "rank: " << rn << endl;
             auto iter = lower_bound(f.begin(), f.end(), p);
+            //cout << "next_rank: " << int(iter - f.begin())+rn << endl;
             index = int(iter - f.begin())+rn;
+            //cout << "-------------" << endl;
+            //exit(1);
+            //if(br_count > 30) break;
         }
+        //if(br_count > 30) break;
         reparse.push_back(0);
         nsq++;
     }
-    for(int i=0;i<reparse.size();i++){fwrite(&reparse[i],sizeof(uint32_t),1,fp);};
+    for(int i=0;i<reparse.size();i++){ //cout << reparse[i] << " "; 
+                                       fwrite(&reparse[i],sizeof(uint32_t),1,fp);};
     
 }
 
@@ -451,3 +360,6 @@ void my_load(std::vector<X> &x, std::istream &in, typename std::enable_if<std::i
   x.resize(size);
   my_load_vector(x, in);
 }
+
+
+
