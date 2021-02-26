@@ -198,6 +198,7 @@ uint64_t cyclic_mt_process_file_fasta(Args& arg, map<uint64_t,word_stats>& wf)
     // close thread-specific output files
     fclose(td[i].parse);
     fclose(td[i].last);
+    fclose(td[i].o);
     if(td[i].sa) fclose(td[i].sa);
     if(td[i].words>0) {
       // extra check

@@ -1,82 +1,3 @@
-/* ******************************************************************************
- * newscan.cpp
- *
- * parsing algorithm for bwt construction of repetitive sequences based
- * on prefix free parsing. See:
- *   Christina Boucher, Travis Gagie, Alan Kuhnle and Giovanni Manzini
- *   Prefix-Free Parsing for Building Big BWTs
- *   [Proc. WABI '18](http://drops.dagstuhl.de/opus/volltexte/2018/9304/)
- *
- * Usage:
- *   newscan.x wsize modulus file
- *
- * Accepts any kind of file that does not contain the chars 0x0, 0x1, 0x2
- * which are used internally. If input file is gzipped use cnewscan.x which
- * automatically extracts the content
- *
- * The parameters wsize and modulus are used to define the prefix free parsing
- * using KR-fingerprints (see paper)
- *
- * The algorithm computes the prefix free parsing of
- *     T = (0x2)file_content(0x2)^wsize
- * in a dictionary of words D and a parsing P of T in terms of the
- * dictionary words. Note that the words in the parsing overlap by wsize.
- * Let d denote the number of words in D and p the number of phrases in
- * the parsing P
- *
- * newscan outputs the following files:
- *
- * file.dict
- * containing the dictionary words in lexicographic order with a 0x1 at the end of
- * each word and a 0x0 at the end of the file. Size: |D| + d + 1 where
- * |D| is the sum of the word lengths
- *
- * file.occ
- * the number of occurrences of each word in lexicographic order.
- * We assume the number of occurrences of each word is at most 2^32-1
- * so the size is 4d bytes
- *
- * file.parse
- * containing the parse P with each word identified with its 1-based lexicographic
- * rank (ie its position in D). We assume the number of distinct words
- * is at most 2^32-1, so the size is 4p bytes
- *
- * file.last
- * contaning the charater in positon w+1 from the end for each dictionary word
- * Size: d
- *
- * file.sai (if option -s is given on the command line)
- * containing the ending position +1 of each dictionary word in the original
- * text written using IBYTES bytes for each entry
- * Size: d*IBYTES
- *
- * The output of newscan must be processed by bwtparse, which invoked as
- *
- *    bwtparse file
- *
- * computes the BWT of file.parse and produces file.ilist of size 4p+4 bytes
- * contaning, for each dictionary word in lexicographic order, the list
- * of BWT positions where that word appears (ie i\in ilist(w) <=> BWT[i]=w).
- * There is also an entry for the EOF word which is not in the dictionary
- * but is assumed to be the smallest word.
- *
- * In addition, bwtparse permutes file.last according to
- * the BWT permutation and generates file.bwlast such that file.bwlast[i]
- * is the char from P[SA[i]-2] (if SA[i]==0 , BWT[i]=0 and file.bwlast[i]=0,
- * if SA[i]==1, BWT[i]=P[0] and file.bwlast[i] is taken from P[n-1], the last
- * word in the parsing).
- *
- * If the option -s is given to bwtparse, it permutes file.sai according
- * to the BWT permutation and generate file.bwsai using again IBYTES
- * per entry.  file.bwsai[i] is the ending position+1 ofBWT[i] in the
- * original text
- *
- * The output of bwtparse (the files .ilist .bwlast) together with the
- * dictionary itself (file .dict) and the number of occurrences
- * of each word (file .occ) are used to compute the final BWT by the
- * pfbwt algorithm.
- *
- */
 #include <iostream>
 #include <string>
 #include <vector>
@@ -100,7 +21,7 @@ extern "C" {
 }
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
-        
+//#include "parse.hpp"
 
 using namespace std;
 using namespace __gnu_cxx;
@@ -121,6 +42,7 @@ struct Args {
    bool SAinfo = false;   // compute SA information
    bool is_fasta = false;  // read a fasta file
    bool compress = false; // parsing called in compress mode
+   bool p_val = false; // validate the parse
    int th=0;              // number of helper threads
    int verbose=0;         // verbosity level
 };
@@ -168,7 +90,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
     puts("");
   
     string sarg;
-    while ((c = getopt( argc, argv, "p:w:fsht:v") ) != -1) {
+    while ((c = getopt( argc, argv, "p:w:fasht:v") ) != -1) {
        switch(c) {
          case 's':
          arg.SAinfo = true; break;
@@ -182,6 +104,8 @@ void parseArgs( int argc, char** argv, Args& arg ) {
          arg.p = stoi( sarg ); break;
          case 'f':
          arg.is_fasta = true; break;
+         case 'a':
+         arg.p_val = true; break;
          case 't':
          sarg.assign( optarg );
          arg.th = stoi( sarg ); break;
@@ -499,126 +423,72 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
   // open parse files. the old parse can be stored in a single file or in multiple files
   mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
   FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
+  FILE *lenf = open_aux_file(arg.inputFileName.c_str(), EXTLEN, "wb");
+  FILE *strt = open_aux_file(arg.inputFileName.c_str(), EXTSTART, "wb");
   
   // recompute occ as an extra check
   vector<occ_int_t> occ(wfreq.size()+1,0); // ranks are zero based
   uint64_t hash;
+  uint32_t len = 0, start = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
+  //size_t s = fwrite(&start,sizeof(start),1,strt);
+  //if(s!=1) die("Error writing to new parse file");
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
     if(s==0) break;
     if(s!=1) die("Unexpected parse EOF");
     if(hash != hash_sep){
-    word_int_t rank = wfreq.at(hash).rank;
-    occ[rank]++;
-    s = fwrite(&rank,sizeof(rank),1,newp);
-    if(s!=1) die("Error writing to new parse file");}
-    else{
-        word_int_t rank = 0;
+        len++;
+        word_int_t rank = wfreq.at(hash).rank;
+        occ[rank]++;
         s = fwrite(&rank,sizeof(rank),1,newp);
         if(s!=1) die("Error writing to new parse file");}
+    else{
+        s = fwrite(&start,sizeof(start),1,strt);
+        if(s!=1) die("Error writing to start file");
+        start += len;
+        //word_int_t rank = 0;
+        //s = fwrite(&rank,sizeof(rank),1,newp);
+        //if(s!=1) die("Error writing to new parse file");
+        s = fwrite(&len,sizeof(len),1,lenf);
+        if(s!=1) die("Error writing to lengths file");
+        len=0;}
     }
   if(fclose(newp)!=0) die("Error closing new parse file");
   if(mfclose(moldp)!=0) die("Error closing old parse segment");
+  if(fclose(lenf)!=0) die("Error closing lengths file");
+  if(fclose(strt)!=0) die("Error closing starting positions file");
   // check old and recomputed occ coincide
   for(auto& x : wfreq)
     assert(x.second.occ == occ[x.second.rank]);
 }
 
-void remapDict(vector<string> &dictionary, FILE *dict_file){
-    
-    char c = 1;
-    string word("");
-    while(int(c) != 0){
-        fread(&c,sizeof(c),1,dict_file);
-        if(int(c) != 1){ word.append(1, c);}else{
-            dictionary.push_back(word);
-            word.erase(0,word.size());}
-    }
-    if(fclose(dict_file)!=0) die("Error closing dict file.");
-
-}
-
-void remapOffset(vector<uint64_t> &offsets, FILE *offset_file){
-    
-    uint64_t offset,prev_offset;
-    int s = fread(&offset,sizeof(offset),1,offset_file);
-    offsets.push_back(offset-1);
-    prev_offset = offset;
-    while(s == 1){
-        s = fread(&offset,sizeof(offset),1,offset_file);
-        if(offset == 0 && prev_offset==0) break;
-        if(prev_offset==0){offsets.push_back(offset-1);}
-        prev_offset = offset;
-    }
-    if(fclose(offset_file)!=0) die("Error closing offset file.");
-}
-
-std::string to_roman(unsigned int value)
+void remapOffset(Args &arg)
 {
-    struct romandata_t { unsigned int value; char const* numeral; };
-    const struct romandata_t romandata[] =
-    {
-        {1000, "M"}, {900, "CM"},
-        {500, "D"}, {400, "CD"},
-        {100, "C"}, { 90, "XC"},
-        { 50, "L"}, { 40, "XL"},
-        { 10, "X"}, { 9, "IX"},
-        { 5, "V"}, { 4, "IV"},
-        { 1, "I"},
-        { 0, NULL} // end marker
-    };
-
-    std::string result;
-    for (const romandata_t* current = romandata; current->value > 0; ++current)
-    {
-        while (value >= current->value)
-        {
-            result += current->numeral;
-            value -= current->value;
+    FILE *newoff = open_aux_file(arg.inputFileName.c_str(), EXTOFF, "wb");
+    uint64_t offset = 0;
+    for(int i=0; i<arg.th; i++){
+        string filename = arg.inputFileName + string(".") + to_string(i) + string(".offset");
+        //cout << "filename: " << filename << endl;
+        FILE *off = fopen(filename.c_str(), "r");
+        //int fn = fileno(off);
+        //cout << fn << endl;
+        while(true){
+            size_t s = fread(&offset,sizeof(offset),1,off);
+            //cout << "off: " << offset << endl;
+            if(s==0) break;
+            if(s!=1) die("Unexpected parse EOF");
+            s = fwrite(&offset,sizeof(offset),1,newoff);
+            if(s!=1) die("Error writing to offset file");
         }
+        if(fclose(off)!=0) die("Error closing old offset segment");
     }
-    return result;
+    if(fclose(newoff)!=0) die("Error closing new offset file");
 }
 
-void ParsetoFasta(vector<string> &dictionary, vector<uint64_t> &offsets, FILE *parse, FILE *fasta, unsigned int minsize){
-    uint seq_no = 1, s = 1;
-    string header = ">" + to_roman(seq_no) + "\n";
-    uint32_t rank, prev_rank;
-    uint64_t offset; 
-    string word(""), lword(""), last_sub(""), first_sub("");
-    
-    while(fread(&rank,sizeof(rank),1,parse) == 1 && seq_no <= offsets.size()){
-        if(rank != 0){
-            lword = dictionary[rank-1];
-            word += lword.substr(0,lword.size()-minsize);
-            prev_rank=rank;}
-        else
-        {   
-            if(fwrite(header.c_str(),1,header.size(),fasta) < 1) die("Error writing header to fasta 1.");
-            lword = dictionary[prev_rank-1];
-            int size = lword.size();
-            word.erase(word.size()- (size-minsize),word.size());
-            offset = offsets[seq_no-1];
-            last_sub = lword.substr(0,lword.size()-offset-minsize);
-            lword.erase(0,lword.size()-offset-minsize);
-            first_sub = lword.substr(0,lword.size()-minsize);
-            if(fwrite(first_sub.c_str(),1,first_sub.size(),fasta) < 0) die("Error writing to fasta 2.");
-            if(fwrite(word.c_str(),1,word.size(),fasta) < 0) die("Error writing to fasta 3.");
-            if(fwrite(last_sub.c_str(),1,last_sub.size(),fasta) < 0) die("Error writing to fasta 4.");
-            seq_no++;
-            prev_rank = rank;
-            word.erase(0,word.size());
-            lword.erase(0,lword.size());
-            header = "\n>" + to_roman(seq_no) + "\n"; 
-        }
-    }
-}
 
 int main(int argc, char** argv) {
-    // Prints welcome message...
-    std::cout << "Welcome ..." << std::endl;
     
     // translate command line parameters
     Args arg;
@@ -703,26 +573,10 @@ int main(int argc, char** argv) {
     start_wc = time(NULL);
     cout << "Generating remapped parse file\n";
     remapParse(arg, wordFreq);
+    cout << "Generating remapped offset file\n";
+    remapOffset(arg);
     cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
     cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";
     
-    // validation
-    cout << "Starting the validation..." << endl;
-    start_wc = time(NULL);
-    FILE *dict_file = open_aux_file(arg.inputFileName.c_str(), EXTDICT, "r");
-    FILE *offset_file = fopen((arg.inputFileName+".offset").c_str(), "r");
-    FILE *parse_file = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "r");
-    FILE *refasta_file = open_aux_file(arg.inputFileName.c_str(), EXTRFAS, "wb");
-    cout << "Creating dictionary array..." << endl;
-    vector<string> dictionary;
-    vector<uint64_t> offsets;
-    remapDict(dictionary,dict_file);
-    cout << "dict size: " << dictionary.size() << endl;
-    cout << "Rebuilding dictionary file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
-    cout << "creating offset file..." << endl;
-    remapOffset(offsets,offset_file);
-    ParsetoFasta(dictionary,offsets,parse_file,refasta_file,arg.w);
-    
     return 0;
 }
-
