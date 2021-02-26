@@ -26,8 +26,6 @@
 #define EXTESA   "esa"
 #define EXTOFF   "offset"
 #define EXTRFAS  "rfasta"
-#define EXTLEN   "len"
-#define EXTSTART  "start"
 
 
 void die(const char *s);
