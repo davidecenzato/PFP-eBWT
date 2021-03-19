@@ -10,9 +10,9 @@ LDLIBSOPTIONS=-L sdsl-lite/SDSL_INSTALL_PATH/lib
 INCLUDEOPTIONS=-I sdsl-lite/SDSL_INSTALL_PATH/include
 
 # main executables 
-EXECS=newscan.x 
+EXECS=circpfp.x 
 # executables not using threads (and therefore not needing the thread library)
-EXECS_NT=newscanNT.x pfebwtNT.x 
+EXECS_NT=circpfpNT.x bebwtNT.x bebwtNT64.x
 #pfebwtNT.x
 
 # targets not producing a file declared phony
@@ -26,20 +26,23 @@ gsa/gsacak.o: gsa/gsacak.c gsa/gsacak.h
 gsa/gsacak64.o: gsa/gsacak.c gsa/gsacak.h
 	$(CC) $(CFLAGS) -c -o $@ $< -DM64
 
-newscan.x: newscan.cpp newscan.hpp malloc_count.o utils.o xerrors.o 
-	$(CXX) $(CXX_FLAGS) -o $@ newscan.cpp malloc_count.o utils.o xerrors.o -ldl -lz -pthread
+csais.o: csais.cpp csais.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-newscanNT.x: newscan.cpp malloc_count.o utils.o
+csais64.o: csais.cpp csais.h
+	$(CC) $(CFLAGS) -c -o $@ $< -DM64
+
+circpfp.x: circpfp.cpp circpfp.hpp malloc_count.o utils.o xerrors.o 
+	$(CXX) $(CXX_FLAGS) -o $@ circpfp.cpp malloc_count.o utils.o xerrors.o -ldl -lz -pthread
+
+circpfpNT.x: circpfp.cpp malloc_count.o utils.o 
 	$(CXX) $(CXX_FLAGS) -o $@ $^ -lz -ldl -DNOTHREADS
 
-pfebwtNT.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o utils.o gsa/gsacak.o
-	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak.o utils.o ${INCLUDEOPTIONS} ${LDLIBSOPTIONS} -ldl -lsdsl -ldivsufsort -ldivsufsort64
+bebwtNT.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o utils.o gsa/gsacak.o csais.o
+	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak.o utils.o csais.o ${INCLUDEOPTIONS} ${LDLIBSOPTIONS} -ldl -lsdsl -ldivsufsort -ldivsufsort64
+
+bebwtNT64.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o utils.o gsa/gsacak64.o csais64.o
+	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak64.o utils.o csais64.o -DM64 ${INCLUDEOPTIONS} ${LDLIBSOPTIONS} -ldl -lsdsl -ldivsufsort -ldivsufsort64
 
 clean:
-	rm -f $(EXECS) $(EXECS_NT) *.o gsa/*.o
-
-install_sdsl:
-	./sdsl-lite/install.sh
-
-unistall_sdsl:
-	./sdsl-lite/uninstall.sh
+	rm -f $(EXECS) $(EXECS_NT) *.o gsa/*.o 

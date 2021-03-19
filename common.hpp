@@ -35,7 +35,7 @@
 #include <sys/mman.h> // for mmap
 #include <unistd.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+ #include <fcntl.h>
 
 #include <sstream>      // std::stringstream
 

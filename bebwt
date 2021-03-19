@@ -7,9 +7,10 @@ Tool to build the EBWT for higly repetive files.
 """
 
 dirname = os.path.dirname(os.path.abspath(__file__))
-parse_exe       =  os.path.join(dirname, "newscan.x")
-parseNT_exe     =  os.path.join(dirname, "newscanNT.x")
-pfebwt_exe      =  os.path.join(dirname, "pfebwtNT.x")
+parse_exe       =  os.path.join(dirname, "circpfp.x")
+parseNT_exe     =  os.path.join(dirname, "circpfpNT.x")
+bebwtNT_exe      =  os.path.join(dirname, "bebwtNT.x")
+bebwtNT64_exe      =  os.path.join(dirname, "bebwtNT64.x")
 
 def main():
     parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
@@ -26,7 +27,7 @@ def main():
     #parser.add_argument('-f', help='read fasta',action='store_true')
     #parser.add_argument('--sum', help='compute output files sha256sum',action='store_true')
     parser.add_argument('--parsing',  help='stop after the parsing phase (debug only)',action='store_true')
-    parser.add_argument('--compress',  help='compress output of the parsing phase (debug only)',action='store_true')
+    #parser.add_argument('--compress',  help='compress output of the parsing phase (debug only)',action='store_true')
     args = parser.parse_args()
 
     #if args.f and args.t > 0 and (".fq" in args.input or ".fastq" in args.input or ".fnq" in args.input):
@@ -60,50 +61,55 @@ def main():
         #if args.parsing or args.compress: command += " -c"
         #if args.f: command += " -f"
         #only fasta supported
-        command += " -f"
+        #command += " -f"
         print("==== Parsing. Command:", command)
         if(execute_command(command,logfile,logfile_name)!=True):
             return
         print("Elapsed time: {0:.4f}".format(time.time()-start))
         if args.parsing:
             # delete temporary parsing files 
-            command = "rm -f {file}.parse_old {file}.last {file}.start {file}.len {file}.offset {file}.occ".format(file=args.input)
+            command = "rm -f {file}.parse_old {file}.last {file}.start {file}.len {file}.offset {file}.fchar {file}.occ".format(file=args.input)
             if(execute_command(command,logfile,logfile_name)!=True):
                 return
             print("==== Stopping after the parsing phase as requested")      
             return
-        elif args.compress:
+        #elif args.compress:
             # save parsing files 
-            start = time.time()
-            command = "tar -cJf {file}.parse.txz {file}.parse {file}.dicz".format(file=args.input)
-            print("==== Compressing. Command:", command)
-            if(execute_command(command,logfile,logfile_name,env={"XZ_OPT":"-9"})!=True): 
-                return
-            print("Elapsed time: {0:.4f}".format(time.time()-start))
-            delete_temp_files(args,logfile,logfile_name)
-            print("==== Done: Parsing output xz-compressed as requested")
-            return 
+            #start = time.time()
+            #command = "tar -cJf {file}.parse.txz {file}.parse {file}.dicz".format(file=args.input)
+            #print("==== Compressing. Command:", command)
+            #if(execute_command(command,logfile,logfile_name,env={"XZ_OPT":"-9"})!=True): 
+            #    return
+            #print("Elapsed time: {0:.4f}".format(time.time()-start))
+            #delete_temp_files(args,logfile,logfile_name)
+            #print("==== Done: Parsing output xz-compressed as requested")
+            #return 
 
         # ----------- Computing the eBWT of the text
         start = time.time()
         parse_size = os.path.getsize(args.input+".parse")/4
         if(parse_size >=  (2**32-1) ):
-            print("Sorry, the parse contains %d words" %  parse_size )
-            print("which is more than my current limit 2^32-2")
-            print("Please re-run the program with a larger modulus (currently %d)" % args.mod)
-            sys.exit(1)  
+            print("The parse contains %d words" %  parse_size )
+            print("running in 64 bit mode")
+            command = "{exe} {file} -w {wsize}".format(
+                    exe = os.path.join(args.bigbwt_dir,bebwtNT64_exe), wsize=args.wsize, file=args.input)
+            #print("Sorry, the parse contains %d words" %  parse_size )
+            #print("which is more than my current limit 2^32-2")
+            #print("Please re-run the program with a larger modulus (currently %d)" % args.mod)
+            #sys.exit(1)  
         #elif(parse_size >=  (2**31-1) ):
         #   command = "{exe} {file}".format(
         #           exe = os.path.join(args.bigbwt_dir,parsebwt_exe64), file=args.input)
         else:
             command = "{exe} {file} -w {wsize}".format(
-                     exe = os.path.join(args.bigbwt_dir,pfebwt_exe), wsize=args.wsize, file=args.input)
+                     exe = os.path.join(args.bigbwt_dir,bebwtNT_exe), wsize=args.wsize, file=args.input)
         #if (args.s or args.e or args.S): command += " -s"
         #if (args.t>0): command += " -t " + str(args.t)
-        print("==== Computing BWT of Text. Command:", command)
+        print("==== Computing eBWT of Text. Command:", command)
         if(execute_command(command,logfile,logfile_name)!=True):
             return
-        print("Elapsed time: {0:.4f}".format(time.time()-start));      
+        print("Elapsed time: {0:.4f}".format(time.time()-start));
+        print("Total construction time: {0:.4f}".format(time.time()-start0))      
 
 
 

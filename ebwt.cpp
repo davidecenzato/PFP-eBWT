@@ -12,10 +12,10 @@
 #include <queue>
 #include <assert.h>
 #include <errno.h>
-//#include <zlib.h>
+#include <zlib.h>
 extern "C" {
 #include "utils.h"
-//#include "xerrors.h"
+#include "xerrors.h"
 }
 #include "parse.hpp"
 #include "dictionary.hpp"
@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
     // translate command line parameters
     Args arg;
     parseArgs(argc, argv, &arg);
+    
     
     // start measuring wall time clock
     time_t start_wc = time(NULL);

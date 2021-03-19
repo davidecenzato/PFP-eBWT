@@ -1,0 +1,3 @@
+[submodule "sdsl-lite"]
+	path = sdsl-lite
+	url = /sdsl-lite

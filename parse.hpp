@@ -23,15 +23,17 @@
 #include <iostream>
 #include <sdsl/int_vector.hpp>
 #include <sdsl/bit_vectors.hpp>
+#include "csais.h"
 
 typedef std::tuple<int,int,int> triplet;
 
 class parse{
 private:
+    std::vector<uint32_t> ebwtP;
     std::vector<uint32_t> p;
     std::vector<uint64_t> sts;
     std::vector<uint32_t> slen;
-    std::vector<uint32_t> saP;
+    std::vector<uint_t> saP;
     sdsl::bit_vector::rank_1_type rank_b_d;
     sdsl::bit_vector b_il;
     size_t size;
@@ -39,9 +41,11 @@ private:
     
 public:  
     std::vector<uint32_t> ilP;
-    std::vector<uint32_t> ebwtP;
+    std::vector<uint64_t> spos;
     sdsl::bit_vector::select_1_type select_ilist;
+    sdsl::bit_vector::rank_1_type rank_st;
     sdsl::bit_vector b_d;
+    sdsl::bit_vector b_st;
     
     bool saP_flag = false;
     bool ilP_flag = false;
@@ -59,24 +63,37 @@ public:
     read_file(tmp_filename.c_str(), p);
     alphabet_size = *std::max_element(p.begin(),p.end());
     size = p.size();
-    
+  
     checkParseSize();
  
     // read starting positions
     tmp_filename = filename + std::string(".start");
     read_file(tmp_filename.c_str(), sts);
     // create bit vector for starting positions
-    sdsl::bit_vector b_d(size,0);
-    for(uint64_t i=0;i<sts.size();i++){b_d[sts[i]]=1;}
+    sdsl::bit_vector tmp(size+1,0); b_d = tmp; b_d[size]=1;
+    for(int i=0;i<sts.size();i++){b_d[sts[i]]=1;}
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
-    
+    //sdsl::bit_vector::select_1_type sel_b_d = sdsl::bit_vector::select_1_type(&b_d);
     // read lengths
     tmp_filename = filename + std::string(".len");
     read_file(tmp_filename.c_str(), slen);
     
+    std::vector<uint64_t> temp(spos.size(),0);
+    tmp_filename = filename + std::string(".offset");
+    read_file(tmp_filename.c_str(), temp);
+    
     build(saP_flag_, ilP_flag_);
     
     buildBitIl();
+    
+    // build vector of starting character offsets
+    spos.resize(temp.size()); int j=0;
+    for(int i=0;i<ilP.size();i++){
+        if(b_st[i]==1){
+            spos[j] = temp[rank_b_d(saP[ilP[i]]+1)-1]; j++;
+        }
+    }
+    temp.clear();
     
     clearVectors();
     
@@ -89,7 +106,10 @@ public:
             // suffix array of the parse.
             verbose("Computing cSA of the parse");
             _elapsed_time(
-                buildSA();
+                // build SA using circular SA-IS algorithm
+                cSAIS(&p[0],&saP[0], size, alphabet_size+1, sizeof(int), 0, b_d);
+                // build SA using radix sort
+                //buildSA();
             );
         }
         
@@ -108,17 +128,20 @@ public:
         
         // initialize bit vector of the inverted list
         b_il.resize(ilP.size()+1);
+        b_st.resize(ilP.size());
         b_il[0]=1; b_il[ilP.size()]=1;
         size_t prev = ebwtP[ilP[0]];
+        if(b_d[saP[ilP[0]]]==1){b_st[0]=1;}else{b_st[0]=0;}
         for(int i=1;i<ilP.size();i++)
         {   
+            if(b_d[saP[ilP[i]]]==1){b_st[i]=1;}else{b_st[i]=0;}
             size_t next = ebwtP[ilP[i]];
             if(next!=prev){b_il[i]=1;}
             else{b_il[i]=0;}
             prev = next;
         }
+        rank_st = sdsl::bit_vector::rank_1_type(&b_st);
         select_ilist = sdsl::bit_vector::select_1_type(&b_il);
-    
     }
     
     void checkParseSize(){
