@@ -21,18 +21,18 @@ private:
     std::vector<uint32_t> p;
     std::vector<uint64_t> sts;
     std::vector<uint_t> saP;
+    sdsl::bit_vector b_d;
     sdsl::bit_vector::rank_1_type rank_b_d;
     sdsl::bit_vector::select_1_type select_b_d;
-    sdsl::bit_vector b_il;
     size_t size;
     size_t alphabet_size;
     
 public:  
     std::vector<uint_t> ilP;
     std::vector<uint64_t> offset;
+    sdsl::bit_vector b_il;
     sdsl::bit_vector::select_1_type select_ilist;
     sdsl::bit_vector::rank_1_type rank_st;
-    sdsl::bit_vector b_d;
     sdsl::bit_vector b_st;
     
     bool saP_flag = false;
@@ -141,6 +141,9 @@ public:
         sts.clear();
         saP.clear();
         ebwtP.clear();
+        b_d.~int_vector();
+        rank_b_d.~rank_support();
+        select_b_d.~select_support();
     }
     
     void makeEBWT(){

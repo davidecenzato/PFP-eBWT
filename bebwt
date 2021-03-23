@@ -32,8 +32,6 @@ def main():
         start0 = start = time.time()
 
         if args.t>0:
-            print("Parsing using t>0 still does not work properly, please use t=0 option.")
-            exit(1);
             command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
                     exe = os.path.join(args.bigbwt_dir,parse_exe),
                     wsize=args.wsize, modulus = args.mod, th=args.t, file=args.input)

@@ -35,8 +35,6 @@ void *cyclic_mt_parse_fasta(void *dx)
 
   if(arg->verbose>1)
     printf("Scanning from %ld, size %ld as a FASTA record\n",d->true_start,d->true_end-d->true_start);
-  cout << "Scanning.. " << "tstart " << d->true_start << " ";
-  cout << "tend " << d->true_end << endl;
   if(d->true_end-d->true_start == 0) return NULL;
 
   // open input file
@@ -50,11 +48,20 @@ void *cyclic_mt_parse_fasta(void *dx)
   f.seekg(d->true_start); // move to the beginning of assigned region
   KR_window krw(arg->w);
   int c, pc = '\n'; string word = ""; string fword=""; string final_word="";
-  uint64_t pos = 0, start_char = 0; string pword="";
+  uint64_t pos = 0, start_char = 0;
   bool first_trigger = 0;
   
+  // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
+  int counter = 0;
+  while((c != 10)){
+      c = f.get();
+      current_pos++;
+  }
+  pc = c;
+  // parse the sequence
   while( (pc != EOF) && current_pos <= d->true_end + 1) {
+      counter ++;
       c = f.get();
       current_pos++;
       c = std::toupper(c);
@@ -70,7 +77,6 @@ void *cyclic_mt_parse_fasta(void *dx)
                     word.erase(0,word.size() - arg->w);
                 }
                 else{
-                    pword = word;
                     save_update_word(word,arg->w,*wordFreq,d->parse,0);
                     d->words++;
                 }
@@ -90,6 +96,7 @@ void *cyclic_mt_parse_fasta(void *dx)
                     d->words++;
                 }
             }
+            
             final_word = word + fword.erase(0,arg->w - 1);
             save_update_word(final_word,arg->w,*wordFreq,d->parse,1);
             d->words++; 
@@ -181,10 +188,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf)
     // wait for the threads to finish (in order) and close output files
     size_t tot_char=0;
     for(int i=0;i<nt;i++) {
-      cout << "i " << i << endl;
       xpthread_join(t[i],NULL,__LINE__,__FILE__); 
-      cout << "words " << td[i].words << endl;
-      cout << "parsed " << td[i].parsed << endl;
       if(arg.verbose) {
       cout << "s:" << td[i].true_start << "  e:" << td[i].true_end << "  pa:";
       }
