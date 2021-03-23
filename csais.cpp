@@ -24,7 +24,7 @@ void getBuckets(unsigned int *s, int *bkt, int n, int K, int cs, bool end) {
 }
 
 // induce L suffixes
-void induceSAl2(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, int *l_bkt, bit_vector::rank_1_type& r_s,
+void induceSAl(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, int *l_bkt, bit_vector::rank_1_type& r_s,
                bit_vector::select_1_type& s_s, bit_vector& b_s, int n, int K, int cs, int level, vector<uint32_t>& star) { 
     
     int i, j, rank;
@@ -48,7 +48,7 @@ void induceSAl2(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, int *l_
 }
 
 // induce S suffixes
-void induceSAs2(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, bit_vector::rank_1_type& r_s,
+void induceSAs(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, bit_vector::rank_1_type& r_s,
                bit_vector::select_1_type& s_s, bit_vector& b_s, int n, int K, int cs, int level) { 
     
   int i, j, rank;
@@ -83,10 +83,10 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
   
   for(i=0; i<n; i++) SA[i]=EMPTY;
   
-  vector<uint32_t> sgta;
+  vector<uint32_t> sgt; // singletons vector
   for(int i=0;i<nseq;i++){
       sb = s_s(i+1), eb = s_s(i+2)-1, fm = eb+1, len=eb-sb+1;
-      if(len==1){tset(sb,1);sgta.push_back(sb);}
+      if(len==1){tset(sb,1);sgt.push_back(sb);}
       else{
         // find first type
         for(int j=eb;j>sb;j--){
@@ -127,12 +127,12 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
       }
   }
    
-  induceSAl2(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgta);  
-  induceSAs2(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
+  induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt);  
+  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
 
   free(bkt);
   free(l_bkt);
-  sgta.clear();
+  sgt.clear();
   
   // compact all the sorted substrings into the first n1 items of s
   int n1=0;
@@ -211,7 +211,7 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
   j=0;
   for(i=0;i<nseq;i++){
       sb=s_s(i+1), eb=s_s(i+2), len= eb-sb;
-      if(len==1){sgta.push_back(sb);}
+      if(len==1){sgt.push_back(sb);}
       else
       {
           if(isLMSc(sb,eb-1)){ s1[j++]=sb; }
@@ -222,7 +222,6 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
           }
       }
   }
-   
     
   for(int i=0; i<n1; i++) {SA1[i]=s1[SA1[i]];} // get index in s1
    
@@ -234,11 +233,12 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
       j=SA[i]; SA[i]=EMPTY;
       SA[bkt[chr(j)]--]=j;}
 
-  induceSAl2(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgta); 
-  induceSAs2(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
+  induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt); 
+  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
 
   free(bkt); 
   free(l_bkt);
-  sgta.clear();
   free(t);
+  sgt.clear();
+  
 }

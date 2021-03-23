@@ -18,7 +18,7 @@ extern "C" {
     #include "gsa/gsacak.h"
 }
 #include <vector>
-#include <sdsl/int_vector.hpp>
+#include <sdsl/bit_vectors.hpp>
 
 // TODO: Extend it to integer alphabets
 class dictionary{
@@ -28,7 +28,6 @@ private:
 public:
   std::vector<uint8_t> d;
   std::vector<uint32_t> occ;
-  std::vector<uint32_t> fcocc;
   std::vector<uint_t> saD;
   std::vector<int_t> lcpD;
   sdsl::bit_vector b_d; // Starting position of each phrase in D  
@@ -49,10 +48,9 @@ public:
     // Creating bit vector for concatenated dictionary
     b_d = sdsl::bit_vector(d.size(),0);
     b_d[0] = 1;
-    size_t numdol=0;
     for(int i=1;i<d.size()-1;i++)
     {
-        if(d[i]==1){b_d[i+1]=1;numdol++;}
+        if(d[i]==1){b_d[i+1]=1;}
     }
 
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
@@ -65,9 +63,6 @@ public:
     tmp_filename = filename + std::string(".fchar");
     read_file(tmp_filename.c_str(), fchar);
     
-    tmp_filename = filename + std::string(".fcocc");
-    read_file(tmp_filename.c_str(), fcocc);
-    
     b_s = sdsl::bit_vector(d.size(),0);
     for(int i=0;i<fchar.size();i+=2){
         b_s[select_b_d(fchar[i])+fchar[i+1]]=1;
@@ -77,7 +72,6 @@ public:
     
     // build data structures for the dictionary.
     build();
-    fchar.clear();
     
     }
   

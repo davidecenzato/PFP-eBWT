@@ -114,7 +114,7 @@ public:
                 while (inc(next) && (dict.lcpD[next.i] >= curr.suffix_length))
                 {
                     assert(next.suffix_length >= curr.suffix_length);
-                    assert((dict.b_d[next.sn] == 0 && next.suffix_length >= w) || (next.suffix_length != curr.suffix_length));
+                    //assert((dict.b_d[next.sn] == 0 && next.suffix_length >= w) || (next.suffix_length != curr.suffix_length));
                     if (next.suffix_length == curr.suffix_length)
                     {
                         same_chars = (same_chars && same_suffix.back().bwt_char == next.bwt_char);
@@ -169,7 +169,8 @@ public:
                             size_t end = pars.select_ilist(s.phrase+1);
                             for(int i=begin;i<end;i++)
                             {
-                                cand2.push_back({pars.ilP[i],s.bwt_char,i,s.st_pos});
+                                //cand2.push_back({pars.ilP[i],s.bwt_char,i,s.st_pos});
+                                cand2.push_back(std::make_tuple(pars.ilP[i],s.bwt_char,i,s.st_pos));
                             }
                         }
                         
@@ -182,7 +183,7 @@ public:
                             //if character in the eBWT of the parse is marked as containing a start of string 
                             // character, store its position in the ebwt.
                             if(pars.b_st[index]==1){
-                                if(pars.spos[(pars.rank_st(index+1)-1)] == std::get<3>(cand2[i])){
+                                if(pars.offset[(pars.rank_st(index+1)-1)] == std::get<3>(cand2[i])){
                                     start = ins_sofar-1;
                                     if(fwrite(&start,sizeof(start),1,I_file)!=1) error("I file write error");
                                 }

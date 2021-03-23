@@ -9,29 +9,22 @@
 #define CSAIS_H
 
 #include <time.h>
-#include <iostream>
 #include <stdlib.h>
 #include <memory.h>
-#include <time.h>
+#include <iostream>
 #include <ctime>
 #include <vector>
 #include <sdsl/bit_vectors.hpp>
 
-#ifndef M64
-	#define M64 0
-#endif
-
-#if M64
-	typedef uint64_t uint_t;
+#ifdef M64
+typedef uint64_t uint_t;
 #else
-	typedef uint32_t uint_t;
+typedef uint32_t uint_t;
 #endif
 
+void cSAIS(uint32_t *s, uint_t *SA, int n, int K, int cs, int level, sdsl::bit_vector &b_s);
 
-//void cSAIS(unsigned int *s, unsigned int *SA, int n, int K, int cs, int level, sdsl::bit_vector &b_s);
-void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, sdsl::bit_vector &b_s);
-
-/** @brief computes the suffix array of string s[0..n-1] 
+/** @brief computes the circular suffix array of string s[0..n-1] 
  *
  *  @param s	 input string 
  *  @param SA    suffix array 

@@ -253,7 +253,6 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
   
     // main loop on the chars of the input file
     int c;
-    int no_seq = 0;
     KR_window krw(arg.w);
     uint64_t total_char = 0;
     
@@ -264,28 +263,30 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
     while ((l =  kseq_read(seq)) >= 0) {
-        no_seq++;
-        uint64_t start_char=0;
-        string first_word("");
-        string next_word("");
-        bool first_trigger = 0, last_phr = 0;
-        for (uint64_t i = 0; i < seq->seq.l; i++) {
+        uint64_t start_char=0, i=0;
+        string first_word(""); string next_word(""); string pword("");
+        for (i = 0; i < seq->seq.l; i++) {
             c = std::toupper(seq->seq.s[i]);
             if (c <= Dollar) {cerr << "Invalid char found in input file: no additional chars will be read\n"; break;}
             next_word.append(1, c);
-            if(first_trigger == 0){first_word.append(1, c);}
             uint64_t hash = krw.addchar(c);
             if (hash%arg.p==0 && krw.current == arg.w) {
-                if(first_trigger==0){
-                    first_trigger = 1; start_char = i;
-                    if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error");
-                    next_word.erase(0,next_word.size() - arg.w);
-                }
-                else{
-                    save_update_word(next_word,arg.w,wordFreq,parse_file,last_phr);
-                }
+                start_char = i;
+                if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error");
+                first_word = string(next_word);
+                next_word.erase(0,next_word.size() - arg.w); break;
             }
-        } 
+        }
+        for (i=i+1; i< seq->seq.l; i++){
+            c = std::toupper(seq->seq.s[i]);
+            next_word.append(1, c);
+            uint64_t hash = krw.addchar(c);
+            if (hash%arg.p==0) {
+                pword = next_word;
+                save_update_word(next_word,arg.w,wordFreq,parse_file,0);
+            }
+        }
+           
         total_char += krw.tot_char;
         assert(first_word.size() >= arg.w);
         // check if exist a trigger string in final word
@@ -294,13 +295,13 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
             if(hash%arg.p==0){
-                save_update_word(next_word,arg.w,wordFreq,parse_file,last_phr);
+                pword = next_word;
+                save_update_word(next_word,arg.w,wordFreq,parse_file,0);
             }
         }
         // join first and last word
         string final_word = next_word + first_word.erase(0,arg.w-1);
-        last_phr = 1;
-        save_update_word(final_word,arg.w,wordFreq,parse_file,last_phr);
+        save_update_word(final_word,arg.w,wordFreq,parse_file,1);
         krw.reset();
         if (c <= Dollar) break;
     }
@@ -350,17 +351,15 @@ bool pstringCompare(const string *a, const string *b)
   return *a <= *b;
 }
 
-void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
+void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
 {
   // open parse files. the old parse can be stored in a single file or in multiple files
-  mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
-  mFile *moff = mopen_aux_file(arg.inputFileName.c_str(), EXTOFF0, arg.th);
+  mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, th);
+  mFile *moff = mopen_aux_file(arg.inputFileName.c_str(), EXTOFF0, th);
   FILE *newp   = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
   FILE *newoff  = open_aux_file(arg.inputFileName.c_str(), EXTOFF, "wb");
-  FILE *lenf   = open_aux_file(arg.inputFileName.c_str(), EXTLEN, "wb");
   FILE *strt   = open_aux_file(arg.inputFileName.c_str(), EXTSTART, "wb");
   FILE *fchar  = open_aux_file(arg.inputFileName.c_str(), EXTFCHAR, "wb");
-  FILE *fcocc  = open_aux_file(arg.inputFileName.c_str(), EXTFCOCC, "wb");
   
   // recompute occ as an extra check
   vector<occ_int_t> occ(wfreq.size()+1,0); // ranks are zero based
@@ -385,8 +384,6 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
         s = fwrite(&start,sizeof(start),1,strt);
         if(s!=1) die("Error writing to start file");
         start += len;
-        s = fwrite(&len,sizeof(len),1,lenf);
-        if(s!=1) die("Error writing to lengths file");
         len=0;
         s = mfread(&fc,sizeof(fc),1,moff);
         if(s!=1) die("Unexpected offset EOF");
@@ -404,15 +401,12 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq)
 
   for (auto& x: startFreq) {
       if(fwrite(&x.first,sizeof(x.first),1,fchar)!=1) die("error writing to first char file");
-      if(fwrite(&x.second,sizeof(x.second),1,fcocc)!=1) die("error writing to first char occurence file");
   }
     
   if(fclose(newp)!=0) die("Error closing new parse file");
   if(fclose(fchar)!=0) die("Error closing first char positions file");
-  if(fclose(fcocc)!=0) die("Error closing first char occurrence file");
   if(mfclose(moldp)!=0) die("Error closing old parse segment");
   if(mfclose(moff)!=0) die("Error closing offset file");
-  if(fclose(lenf)!=0) die("Error closing lengths file");
   if(fclose(strt)!=0) die("Error closing starting positions file");
   if(fclose(newoff)!=0) die("Error closing new offsets file");
   // check old and recomputed occ coincide
@@ -434,18 +428,19 @@ int main(int argc, char** argv) {
     time_t start_wc = start_main;
     // init sorted map counting the number of occurrences of parse phrases
     map <uint64_t,word_stats> wordFreq;
-    uint64_t totChar; // tot characters seen
+    uint64_t totChar; int nt = 0; // tot characters seen
     
     // ------------ parse input fasta file
     try{
-        if(arg.th==0){totChar = parse_fasta(arg,wordFreq);}
+        if(arg.th<=1){totChar = parse_fasta(arg,wordFreq);}
         else
         {
             #ifdef NOTHREADS
             cerr << "Sorry, this is the no-threads executable and you requested " << arg.th << " threads\n";
             exit(1);
             #else
-            totChar = parallel_parse_fasta(arg, wordFreq);
+            Res res = parallel_parse_fasta(arg, wordFreq);
+            totChar = res.tot_char; nt = res.us_th;
             #endif
         }
     }
@@ -492,7 +487,7 @@ int main(int argc, char** argv) {
     // remap parse file
     start_wc = time(NULL);
     cout << "Generating remapped parse file\n";
-    remapParse(arg, wordFreq);
+    remapParse(arg, wordFreq, nt);
     cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
     cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";
     

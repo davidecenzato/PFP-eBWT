@@ -3,7 +3,18 @@
  * Simple function that given the eBWT of text and its starting positions S, invert the eBWT to the original text.
  * ****************************************************************** */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <iostream>
+#include <assert.h>
+#include <vector>
+#include <string>
+#include <sys/stat.h>
+#include <sdsl/wavelet_trees.hpp>
 #include <algorithm>
+
+using namespace std;
 
 template<typename T>
 void read_file(const char *filename, std::vector<T>& ptr){
@@ -28,28 +39,34 @@ void read_file(const char *filename, std::vector<T>& ptr){
 void inverteBWT(std::vector<uint8_t> EBWT, std::vector<uint64_t> ST_P, string I, int alph_size){
     // Function that inverse the eBWT of a int string using sdsl wavelet trees
     string wt_filename = I + std::string(".eBWT");
+    cout << "Building the Wavelet tree of the eBWT." << endl;
     sdsl::wt_blcd<> wt; sdsl::construct(wt,wt_filename,1);
     vector<uint32_t> C(alph_size+1,0); vector<uint32_t> bkt(alph_size,0);
+    cout << "Building the C vector of the eBWT." << endl;
     for(int i=0;i<EBWT.size();i++){ bkt[EBWT[i]]++; }
     for(int i=1;i<C.size();i++){ C[i]=C[i-1]+bkt[i-1]; }
     
     string tmp_filename = I + std::string(".rfasta");
     FILE* fp = fopen(tmp_filename.c_str(), "w+");
-    for(int i=ST_P.size()-1;i>-1;i--){
-        int newline = 60;
+    //for(int i=ST_P.size()-1;i>-1;i--){
+    cout << "Inverting " << ST_P.size() << " sequences." << endl;
+    for(int i=0;i<ST_P.size();i++){
+        cout << "Sequence i " << i << endl;
+        //int newline = 60;
         std::vector<uint8_t> RP;  
         int index = ST_P[i]; 
         uint8_t p = EBWT[index]; 
-        RP.push_back(p); newline--;
+        RP.push_back(p); //newline--;
         int starting = index;
         index = C[p]+wt.rank(index,p);
         while(index != starting){
             p = EBWT[index];
-            RP.push_back(p); newline--;
+            RP.push_back(p); //newline--;
             index = C[p]+wt.rank(index,p);
-            if(newline==0){RP.push_back('\n');newline=60;}
+            //if(newline==0){RP.push_back('\n');newline=60;}
         }
         // write the sequence in the correct order
+        //cout << "i " << i << endl;
         reverse(RP.begin(),RP.end()); RP.push_back('\n');
         if((fwrite(&RP[0], sizeof(uint8_t), RP.size(), fp))!=RP.size()) {cerr << "fwrite failed" << endl;}
     }

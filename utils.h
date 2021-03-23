@@ -15,19 +15,11 @@
 #define EXTPARS0 "parse_old"
 #define EXTOCC   "occ"
 #define EXTDICT  "dict"
-#define EXTDICZ  "dicz"
-#define EXTLST   "last"
-#define EXTBWLST "bwlast"
-#define EXTSAI   "sai"
-#define EXTBWSAI "bwsai"
-#define EXTILIST "ilist"
-#define EXTSA    "sa"
-#define EXTSSA   "ssa"
-#define EXTESA   "esa"
+#define EXTOFF0  "offset_old"
 #define EXTOFF   "offset"
-#define EXTRFAS  "rfasta"
-#define EXTLEN   "len"
-#define EXTSTART  "start"
+#define EXTSTART "start"
+#define EXTFCHAR "fchar"
+
 
 
 void die(const char *s);
@@ -50,3 +42,4 @@ typedef struct multiFile {
 mFile *mopen_aux_file(const char *base, const char *ext, int nsegs);
 int mfclose(mFile *f);
 size_t mfread(void *ptr, size_t size, size_t nmemb, mFile *f);
+
