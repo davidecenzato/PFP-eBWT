@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   dictionary.hpp
  * Author: hejans
@@ -85,7 +79,7 @@ public:
         lcpD.resize(d.size());
         verbose("Computing SA and LCP of the dictionary");
         _elapsed_time(
-            gsacak(&d[0], &saD[0], &lcpD[0], nullptr, d.size());
+            gsacak(&d[0], &saD[0], &lcpD[0], nullptr, d.size());       
         );
     }
 };

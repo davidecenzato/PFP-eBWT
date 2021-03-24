@@ -12,11 +12,11 @@ unsigned char mask[]={0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 #define tget(i) ( (t[(i)/8]&mask[(i)%8]) ? 1 : 0 )
 #define tset(i, b) t[(i)/8]=(b) ? (mask[(i)%8]|t[(i)/8]) : ((~mask[(i)%8])&t[(i)/8])
 
-#define chr(i) (cs==sizeof(char)?((uint8_t *)s)[i]:((unsigned int *)s)[i])
-#define isLMSc(i,j) ((tget(i) && !tget(j)))
+#define chr(i) (cs==sizeof(uint_s)?((uint_s *)s)[i]:((uint_p *)s)[i])
+#define isLMS(i,j) ((tget(i) && !tget(j)))
 
 // compute the head or end of each bucket
-void getBuckets(unsigned int *s, int *bkt, int n, int K, int cs, bool end) { 
+void getBuckets(uint_s *s, int *bkt, int n, int K, int cs, bool end) { 
   int i, sum=0;
   for(i=0; i<K; i++) bkt[i]=0; // clear all buckets
   for(i=0; i<n; i++) bkt[chr(i)]++; // compute the size of each bucket
@@ -24,8 +24,8 @@ void getBuckets(unsigned int *s, int *bkt, int n, int K, int cs, bool end) {
 }
 
 // induce L suffixes
-void induceSAl(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, int *l_bkt, bit_vector::rank_1_type& r_s,
-               bit_vector::select_1_type& s_s, bit_vector& b_s, int n, int K, int cs, int level, vector<uint32_t>& star) { 
+void induceSAl(unsigned char *t, uint_s *SA, uint_s *s, int *bkt, int *l_bkt, bit_vector::rank_1_type& r_s,
+               bit_vector::select_1_type& s_s, bit_vector& b_s, int n, int K, int cs, int level, vector<uint_s>& star) { 
     
     int i, j, rank;
     getBuckets(s, bkt, n, K, cs, false); // find heads of buckets
@@ -48,7 +48,7 @@ void induceSAl(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, int *l_b
 }
 
 // induce S suffixes
-void induceSAs(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, bit_vector::rank_1_type& r_s,
+void induceSAs(unsigned char *t, uint_s *SA, uint_s *s, int *bkt, bit_vector::rank_1_type& r_s,
                bit_vector::select_1_type& s_s, bit_vector& b_s, int n, int K, int cs, int level) { 
     
   int i, j, rank;
@@ -68,7 +68,7 @@ void induceSAs(unsigned char *t, uint_t *SA, unsigned int *s, int *bkt, bit_vect
 
 // find the circular suffix array SA of s[0..n-1] in {0..K-1}^n
 // level starts from 0
-void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vector &b_s) {
+void cSAIS(uint_s *s, uint_s *SA, int n, int K, int cs, int level, bit_vector &b_s) {
   int i, j, nseq, rank, sb, eb, fm, len;
   bit_vector::rank_1_type r_s = bit_vector::rank_1_type(&b_s);
   bit_vector::select_1_type s_s = bit_vector::select_1_type(&b_s);
@@ -83,7 +83,7 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
   
   for(i=0; i<n; i++) SA[i]=EMPTY;
   
-  vector<uint32_t> sgt; // singletons vector
+  vector<uint_s> sgt; // singletons vector
   for(int i=0;i<nseq;i++){
       sb = s_s(i+1), eb = s_s(i+2)-1, fm = eb+1, len=eb-sb+1;
       if(len==1){tset(sb,1);sgt.push_back(sb);}
@@ -120,15 +120,15 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
   for(i=n-1; i>=0; i--)
   {
       if(b_s[i]==0){
-          if(isLMSc(i,i-1)) SA[bkt[chr(i)]--]=i;
+          if(isLMS(i,i-1)) SA[bkt[chr(i)]--]=i;
       }else{
           rank=r_s(i+1), eb=s_s(rank+1)-1;
-          if(isLMSc(i,eb)) SA[bkt[chr(i)]--]=i;
+          if(isLMS(i,eb)) SA[bkt[chr(i)]--]=i;
       }
   }
-   
+  
   induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt);  
-  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
+  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level);  
 
   free(bkt);
   free(l_bkt);
@@ -136,29 +136,31 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
   
   // compact all the sorted substrings into the first n1 items of s
   int n1=0;
-  vector<uint_t> sts(nseq+1,0);
+  //vector<uint_s> sts(nseq+1,0);
+  uint_s *sts = (uint_s *)malloc(sizeof(uint_s)*(nseq+1)); for(i=0; i<(nseq+1); i++) sts[i]=0;
   for(int i=0;i<n;i++){
       int pos=SA[i];
       rank=r_s(pos+1),sb=s_s(rank),eb=s_s(rank+1);
       if(pos==sb){
-          if(isLMSc(sb,eb-1)){SA[n1++]=pos;sts[rank]++;}
+          if(isLMS(sb,eb-1)){SA[n1++]=pos;sts[rank]++;}
       }else{
-          if(isLMSc(pos,pos-1)){SA[n1++]=pos;sts[rank]++;}
+          if(isLMS(pos,pos-1)){SA[n1++]=pos;sts[rank]++;}
       }
   }
   
   //create the bit vector of the new string
   bit_vector nb_s(n1+1,0); int sum=0;
-  for(int i=0;i<sts.size();i++){ sum+=sts[i]; nb_s[sum]=1;}
-  sts.clear();
+  for(int i=0;i<(nseq+1);i++){ sum+=sts[i]; nb_s[sum]=1;}
+  free(sts);
   
   // Init the name array buffer
   for(i=n1; i<n; i++) SA[i]=EMPTY;
   
   // find the lexicographic names of all substrings
   // insert the first substring
-  int name=1, prev=0; int pos = prev = SA[0]; vector<uint_t> names(n,EMPTY);
-  names[pos]=name-1;
+  int name=1, prev=0; int pos = prev = SA[0]; 
+  uint_s *names = (uint_s *)malloc(sizeof(uint_s)*n); for(i=0; i<n; i++) names[i]=EMPTY;
+  if(n1>0) names[pos]=name-1;
   for(i=1; i<n1; i++) {
         int pp=0, pv=0;
         pos=SA[i]; bool diff=false;
@@ -175,7 +177,7 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
                 diff=true; break;
             }
             else{
-              if(d>0 && (isLMSc(j,pp) || isLMSc(j_p,pv)))
+              if(d>0 && (isLMS(j,pp) || isLMS(j_p,pv)))
                 break;
             }
             pp=j,pv=j_p;
@@ -186,24 +188,27 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
     }
   
   j = n-1;
-  for(int i=names.size()-1;i>-1;i--){
-      if(names[i]!=EMPTY){SA[j--]=names[i];}
+  if(n1 > 0){
+    for(int i=n-1;i>-1;i--){
+        if(names[i]!=EMPTY){SA[j--]=names[i];}
+    }
   }
-  names.clear();
     
+  free(names);
+  
   // s1 is done now
-  uint_t *SA1=SA, *s1=SA+n-n1;  
+  uint_s *SA1=SA, *s1=SA+n-n1;  
   
   // stage 2: solve the reduced problem
   // recurse if names are not yet unique
   if(name<n1) {
-      cSAIS((unsigned int*)s1, SA1, n1, name, sizeof(int), level+1, nb_s);
+      cSAIS((uint_s*)s1, SA1, n1, name, sizeof(uint_s), level+1, nb_s);
   } else { // stop the recursion, generate the suffix array of s1 directly
       for(i=0; i<n1; i++){ SA1[s1[i]] = i; }
   }
-    
+  
   // stage 3: induce the result for the original problem
-
+  
   bkt = (int *)malloc(sizeof(int)*K); // bucket counters
   l_bkt = (int *)malloc(sizeof(int)*K); for(i=0; i<K; i++) l_bkt[i]=0;
 
@@ -214,10 +219,10 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
       if(len==1){sgt.push_back(sb);}
       else
       {
-          if(isLMSc(sb,eb-1)){ s1[j++]=sb; }
+          if(isLMS(sb,eb-1)){ s1[j++]=sb; }
           else{ if(tget(sb)==0){ l_bkt[chr(sb)]++; } }
           for(int x=sb+1;x<eb;x++){
-              if(isLMSc(x,x-1)){ s1[j++]=x; }
+              if(isLMS(x,x-1)){ s1[j++]=x; }
               else{ if(tget(x)==0) {l_bkt[chr(x)]++; } } 
           }
       }
@@ -234,11 +239,15 @@ void cSAIS(unsigned int *s, uint_t *SA, int n, int K, int cs, int level, bit_vec
       SA[bkt[chr(j)]--]=j;}
 
   induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt); 
-  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level); 
-
+  induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level);
+  
   free(bkt); 
   free(l_bkt);
   free(t);
-  sgt.clear();
   
+}
+
+void csais_int(uint_p *s, uint_s *SA, int n, int K, bit_vector &b_s){
+    if((s == NULL) || (SA == NULL) || (n < 0)) {cerr << "Empty input given." << endl; exit(1);}
+    cSAIS((uint_s *)s, (uint_s *)SA, n, K, sizeof(uint_p), 0, b_s);
 }

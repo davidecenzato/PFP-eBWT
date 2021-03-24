@@ -57,8 +57,11 @@ def main():
         # ----------- Computing the eBWT of the text
         start = time.time()
         parse_size = os.path.getsize(args.input+".parse")/4
-        if(parse_size >=  (2**32-1) ):
-            print("The parse contains %d words" %  parse_size )
+        print("Parse contains " + str(parse_size) + " words.")
+        dict_size = os.path.getsize(args.input+".dict")
+        print("Dictionary contains " + str(dict_size) + " characters.")
+        if(parse_size >=  (2**32-1) or dict_size >=  (2**32-1)):
+        #if(True):
             print("running in 64 bit mode")
             command = "{exe} {file} -w {wsize}".format(
                     exe = os.path.join(args.bigbwt_dir,bebwtNT64_exe), wsize=args.wsize, file=args.input)

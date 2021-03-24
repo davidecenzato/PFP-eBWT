@@ -10,19 +10,35 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <limits.h>
+#include <inttypes.h>
+#include <string.h>
 #include <memory.h>
+
 #include <iostream>
 #include <ctime>
 #include <vector>
-#include <sdsl/bit_vectors.hpp>
 
-#ifdef M64
-typedef uint64_t uint_t;
+#include <sdsl/bit_vectors.hpp>
+#include <sdsl/int_vector.hpp>
+
+
+#ifndef P64
+	#define P64 0
 #else
-typedef uint32_t uint_t;
+	#define P64 1
 #endif
 
-void cSAIS(uint32_t *s, uint_t *SA, int n, int K, int cs, int level, sdsl::bit_vector &b_s);
+#if P64 == 1
+    typedef uint64_t uint_s;
+#else
+    typedef uint32_t uint_s;
+#endif
+
+typedef uint32_t uint_p;
+
+void csais_int(uint_p *s, uint_s *SA, int n, int K, sdsl::bit_vector &b_s);
 
 /** @brief computes the circular suffix array of string s[0..n-1] 
  *

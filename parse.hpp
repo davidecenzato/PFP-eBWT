@@ -17,10 +17,10 @@
 
 class parse{
 private:
-    std::vector<uint32_t> ebwtP;
-    std::vector<uint32_t> p;
+    std::vector<uint_p> ebwtP;
+    std::vector<uint_p> p;
     std::vector<uint64_t> sts;
-    std::vector<uint_t> saP;
+    std::vector<uint_s> saP;
     sdsl::bit_vector b_d;
     sdsl::bit_vector::rank_1_type rank_b_d;
     sdsl::bit_vector::select_1_type select_b_d;
@@ -28,7 +28,7 @@ private:
     size_t alphabet_size;
     
 public:  
-    std::vector<uint_t> ilP;
+    std::vector<uint_s> ilP;
     std::vector<uint64_t> offset;
     sdsl::bit_vector b_il;
     sdsl::bit_vector::select_1_type select_ilist;
@@ -52,7 +52,10 @@ public:
     alphabet_size = *std::max_element(p.begin(),p.end());
     size = p.size();
   
-    checkParseSize();
+    #if P64 == 0
+        // if we are in 32 bit mode, check that parse has less than 2^32-2 words
+        checkParseSize();
+    #endif 
  
     // read starting positions
     tmp_filename = filename + std::string(".start");
@@ -92,7 +95,7 @@ public:
             verbose("Computing cSA of the parse");
             _elapsed_time(
                 // build SA using circular SA-IS algorithm
-                cSAIS(&p[0],&saP[0], size, alphabet_size+1, sizeof(int), 0, b_d);
+                csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
             );
         }
         
@@ -129,6 +132,7 @@ public:
     }
     
     void checkParseSize(){
+        std::cout << "Checking parse size." << std::endl;
         if(p.size() > 0x7FFFFFFE) {
             die("Input containing more than 2^31-2 phrases!\n");
             die("Please use 64 bit version\n");
@@ -148,7 +152,7 @@ public:
     
     void makeEBWT(){
      // build the eBWT of the parsing using circular SA
-     uint32_t pc = 0;
+     uint_p pc = 0;
      for (int i=0; i<saP.size();i++){
          if(b_d[saP[i]]==1){ 
              pc = p[select_b_d(rank_b_d(saP[i]+1)+1)-1]-1;
@@ -161,15 +165,15 @@ public:
     }
          
     
-    void countingSort(std::vector<uint32_t> vec, std::vector<uint_t> &out)
+    void countingSort(std::vector<uint_p> vec, std::vector<uint_s> &out)
     {
-        std::vector<uint32_t> count(alphabet_size,0);
+        std::vector<uint_s> count(alphabet_size,0);
         for(size_t i=0; i<vec.size(); ++i)
         {   
-            uint32_t cs = vec[i];
+            uint_p cs = vec[i];
             count[cs]++;
         }  
-        std::vector<uint32_t> psum(count.size(),0);
+        std::vector<uint_s> psum(count.size(),0);
         for(size_t i=1; i<count.size(); ++i)
         {
             psum[i] = psum[i-1] + count[i-1];
@@ -177,7 +181,7 @@ public:
         count.clear();
         for (size_t i = 0; i < vec.size(); ++i)
         {
-            uint32_t cs = vec[i];
+            uint_p cs = vec[i];
             size_t index = psum[cs]++;
             out[index] = i;
         }

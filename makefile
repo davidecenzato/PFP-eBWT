@@ -30,7 +30,7 @@ csais.o: csais.cpp csais.h
 	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64
 
 csais64.o: csais.cpp csais.h
-	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64 -DM64
+	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64 -DP64
 
 invert.o: invertebwt.cpp 
 	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64 -DM64
@@ -45,7 +45,7 @@ bebwtNT.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o u
 	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak.o utils.o csais.o -ldl -lsdsl -ldivsufsort -ldivsufsort64
 
 bebwtNT64.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o utils.o gsa/gsacak64.o csais64.o
-	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak64.o utils.o csais64.o -DM64 -ldl -lsdsl -ldivsufsort -ldivsufsort64
+	$(CXX) $(CXX_FLAGS) -o $@ ebwt.cpp malloc_count.o gsa/gsacak64.o utils.o csais64.o -DP64 -DM64 -ldl -lsdsl -ldivsufsort -ldivsufsort64
 
 clean:
 	rm -f $(EXECS) $(EXECS_NT) *.o gsa/*.o 

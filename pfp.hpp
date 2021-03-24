@@ -137,7 +137,7 @@ public:
                 }   
                 // Hard case
                 else
-                {   
+                {       
                     //suffix not starting with a character occurring at the beginning of 
                     // a input sequence
                     if(!st_chars){
@@ -169,7 +169,6 @@ public:
                             size_t end = pars.select_ilist(s.phrase+1);
                             for(int i=begin;i<end;i++)
                             {
-                                //cand2.push_back({pars.ilP[i],s.bwt_char,i,s.st_pos});
                                 cand2.push_back(std::make_tuple(pars.ilP[i],s.bwt_char,i,s.st_pos));
                             }
                         }
