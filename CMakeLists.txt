@@ -65,7 +65,8 @@ target_link_libraries(bebwtNT.x malloc_count dl z gsacak sdsl  divsufsort divsuf
 
 
 add_executable(bebwtNT64.x ebwt.cpp utils.c csais.cpp)
-target_link_libraries(bebwtNT64.x malloc_count dl z gsacak sdsl  divsufsort divsufsort64)
+target_link_libraries(bebwtNT64.x malloc_count dl z gsacak64 sdsl  divsufsort divsufsort64)
 target_compile_options(bebwtNT64.x PUBLIC "-DM64")
+target_compile_options(bebwtNT64.x PUBLIC "-DP64")
 
 configure_file(${PROJECT_SOURCE_DIR}/bebwt ${PROJECT_BINARY_DIR}/bebwt)

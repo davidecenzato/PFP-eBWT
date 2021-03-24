@@ -38,19 +38,18 @@
 
 typedef uint32_t uint_p;
 
-void csais_int(uint_p *s, uint_s *SA, int n, int K, sdsl::bit_vector &b_s);
-
-/** @brief computes the circular suffix array of string s[0..n-1] 
- *
- *  @param s	 input string 
- *  @param SA    suffix array 
- *  @param n	 string length
- *  @param K	 alphabet size
- *  @param cs	 integer size
- *  @param level recursion level, debug only
- *  @param b_s   starting positions bit vector
- *  @return      None
+// TODO: Replace sdsl::bit_vector with sdsl::sd_vector
+/**
+ * @brief Compute the suffix array 
+ * 
+ * @param s input string
+ * @param SA suffix array
+ * @param n length of the input string
+ * @param K alphabet size
+ * @param b_s bitvector of the starting phrases of the parse
  */
+void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, sdsl::bit_vector &b_s);
+
 
 
 
