@@ -1,8 +1,7 @@
-/* 
- * File:   pfp.hpp
- * Author: hejans
- *
- * Created on February 20, 2021, 11:12 PM
+/*
+ * Code to build the the eBWT of a text using the SA of the dictionary and the Inverted List of the eBWT of the Prefix Free Parse.
+ * 
+ * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/pfp_thresholds.hpp
  */
 
 #ifndef PFP_HPP
@@ -47,7 +46,7 @@ public:
     size_t start;
     size_t  length = 0; // Length of the current run of BWT_T
     
-    typedef std::pair<size_t, uint8_t> pq_t;
+    typedef std::pair<size_t, uint8_t> pq_t; // uint8_t are the eBWT chars
     typedef std::tuple<size_t, uint8_t, size_t, size_t> tq_t;
     
     inline bool is_valid(phrase_suffix_t& s)
@@ -114,7 +113,7 @@ public:
                 while (inc(next) && (dict.lcpD[next.i] >= curr.suffix_length))
                 {
                     assert(next.suffix_length >= curr.suffix_length);
-                    //assert((dict.b_d[next.sn] == 0 && next.suffix_length >= w) || (next.suffix_length != curr.suffix_length));
+                    assert((dict.b_d[next.sn] == 0 && next.suffix_length >= w) || (next.suffix_length != curr.suffix_length));
                     if (next.suffix_length == curr.suffix_length)
                     {
                         same_chars = (same_chars && same_suffix.back().bwt_char == next.bwt_char);
@@ -128,7 +127,7 @@ public:
                     for (auto curr : same_suffix)
                     {
                         head = curr.bwt_char;
-                        for(int i=0;i<dict.occ[curr.phrase-1];i++)
+                        for(size_t i=0;i<dict.occ[curr.phrase-1];i++)
                         {                          
                             if(fputc(head, bwt_file) == EOF) error("BWT write error 1"); ins_sofar++;
                         }                      
@@ -146,7 +145,7 @@ public:
                         for (auto s: same_suffix){
                             size_t begin = pars.select_ilist(s.phrase);
                             size_t end = pars.select_ilist(s.phrase+1);
-                            for(int i=begin;i<end;i++)
+                            for(size_t i=begin;i<end;i++)
                             {
                                 cand.push_back({pars.ilP[i],s.bwt_char});
                             }
@@ -154,7 +153,7 @@ public:
                         
                         std::sort(cand.begin(),cand.end(),sort_pairs);
                         
-                        for(int i=0;i<cand.size();i++){
+                        for(size_t i=0;i<cand.size();i++){
                             head = cand[i].second;
                             if(fputc(head, bwt_file) == EOF) error("BWT write error 2"); ins_sofar++; }
                         
@@ -167,7 +166,7 @@ public:
                         {
                             size_t begin = pars.select_ilist(s.phrase);
                             size_t end = pars.select_ilist(s.phrase+1);
-                            for(int i=begin;i<end;i++)
+                            for(size_t i=begin;i<end;i++)
                             {
                                 cand2.push_back(std::make_tuple(pars.ilP[i],s.bwt_char,i,s.st_pos));
                             }
@@ -175,7 +174,7 @@ public:
                         
                         std::sort(cand2.begin(),cand2.end());
                         
-                        for(int i=0;i<cand2.size();i++){
+                        for(size_t i=0;i<cand2.size();i++){
                             head = std::get<1>(cand2[i]);
                             if(fputc(head, bwt_file) == EOF) error("BWT write error 3"); ins_sofar++;
                             size_t index = std::get<2>(cand2[i]);

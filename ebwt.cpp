@@ -1,3 +1,9 @@
+/*
+ * Code to build the eBWT of a text using its Prefix Free Parse.
+ * 
+ */
+
+
 #include <iostream>
 #include <string>
 #include <vector>

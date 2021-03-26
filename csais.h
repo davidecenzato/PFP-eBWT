@@ -1,9 +1,16 @@
-/* 
- * File:   csais.h
- * Author: hejans
+/*
+ * Circular SAIS implementation to compute the circular SA of an integer vector.
+ * 
+ * This code is adapted from https://github.com/kurpicz/saca-bench/blob/master/sa-is/sais.cpp
+ * which is the original code of the SA-IS algorithm listed below
  *
- * Created on March 12, 2021, 11:50 AM
+ * csais_int(s, SA, n, K, b_s) // computes circular SA of an integer vector. 
+ *
  */
+// This is the sample code for the SA-IS algorithm presented in
+// our article "Two Efficient Algorithms for Linear Suffix Array Construction"
+// (co-authored with Sen Zhang and Wai Hong Chan),
+// which can be retrieved at: http://code.google.com/p/ge-nong/
 
 #ifndef CSAIS_H
 #define CSAIS_H

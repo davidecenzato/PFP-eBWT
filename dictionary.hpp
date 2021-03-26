@@ -1,8 +1,7 @@
-/* 
- * File:   dictionary.hpp
- * Author: hejans
- *
- * Created on February 20, 2021, 1:32 AM
+/*
+ * Code to build the SA and LCP arrays of the dictionary of a prefix free parse.
+ * 
+ * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/dictionary.hpp
  */
 
 #ifndef DICTIONARY_HPP
@@ -21,9 +20,9 @@ private:
   
 public:
   std::vector<uint8_t> d;
-  std::vector<uint32_t> occ;
+  std::vector<uint32_t> occ; // Algo limit, a word cannot occurs more than 2^32 times
   std::vector<uint_t> saD;
-  std::vector<int_t> lcpD;
+  std::vector<int_t> lcpD; // Int because of gsacak interface
   sdsl::bit_vector b_d; // Starting position of each phrase in D  
   sdsl::bit_vector b_s;
   sdsl::bit_vector::rank_1_type rank_b_d;
@@ -42,7 +41,7 @@ public:
     // Creating bit vector for concatenated dictionary
     b_d = sdsl::bit_vector(d.size(),0);
     b_d[0] = 1;
-    for(int i=1;i<d.size()-1;i++)
+    for(size_t i=1;i<d.size()-1;i++)
     {
         if(d[i]==1){b_d[i+1]=1;}
     }
@@ -58,7 +57,7 @@ public:
     read_file(tmp_filename.c_str(), fchar);
     
     b_s = sdsl::bit_vector(d.size(),0);
-    for(int i=0;i<fchar.size();i+=2){
+    for(size_t i=0;i<fchar.size();i+=2){
         b_s[select_b_d(fchar[i])+fchar[i+1]]=1;
     }
     fchar.clear();

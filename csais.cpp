@@ -1,5 +1,5 @@
 /*
- * Circular SAIS implementation to compute the circular SA of a integer vector.
+ * Circular SAIS implementation to compute the circular SA of an integer vector.
  * 
  * This code is adapted from https://github.com/kurpicz/saca-bench/blob/master/sa-is/sais.cpp
  * which is the original code of the SA-IS algorithm listed below
@@ -8,9 +8,6 @@
 // our article "Two Efficient Algorithms for Linear Suffix Array Construction"
 // (co-authored with Sen Zhang and Wai Hong Chan),
 // which can be retrieved at: http://code.google.com/p/ge-nong/
-
-
-
 
 
 #include "csais.h"
@@ -64,9 +61,10 @@ void induceSAs(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, bit_vector:
     
   size_t i, j, rank;
   getBuckets(s, bkt, n, K, cs, true); // find ends of buckets
-  for(i=n-1; i>=0; i--){
-    if(SA[i]!=EMPTY) {
-        j=SA[i];
+  for(i=0;i<n;i++){
+    size_t ni = n-i-1;
+    if(SA[ni]!=EMPTY) {
+        j=SA[ni];
         if(b_s[j]==1){
             rank=r_s(j+1);j=s_s(rank+1)-1;
             if(tget(j) && j>=0) SA[bkt[chr(j)]--]=j;    
@@ -95,6 +93,7 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   size_t sb, eb, fm, len; // maybe uint_s
   bit_vector::rank_1_type r_s = bit_vector::rank_1_type(&b_s);
   bit_vector::select_1_type s_s = bit_vector::select_1_type(&b_s);
+  
   nseq = r_s(n);
   unsigned char *t=(unsigned char *)malloc(n/8+1); // LS-type array in bits
   
@@ -123,12 +122,16 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
         if(fm==eb+1){cerr << "Error! Sequence without a mismatch detected." << endl; exit(1);}
         else{
           // Classify the type of each character
+          // Count the number of L types
           uint_s pos=fm-1, prev=fm;
           bool type = (chr(pos)<chr(prev))?1:0;
           tset(pos, type); if(type==0) l_bkt[chr(pos)]++;
           while(pos != fm){
-              pos=sb+((len+((pos-1-sb)%len))%len); 
-              prev=sb+((len+((prev-1-sb)%len))%len); 
+              if(pos-sb > 0){ pos--; }
+              else {pos = eb;}
+              if(prev-sb > 0){ prev--; }
+              else {prev = eb;}
+              
               type=(chr(pos)<chr(prev) || (chr(pos)==chr(prev) && tget(prev)==1));
               if(type==0){l_bkt[chr(pos)]++;}
               tset(pos,type?1:0);
@@ -141,26 +144,26 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   getBuckets(s, bkt, n, K, cs, true); // find ends of buckets
 
   // put S star suffixes in their correct positions
-  for(i=n-1; i>=0; i--)
+  for(i=0; i<n; ++i)
   {
-      if(b_s[i]==0){
-          if(isLMS(i,i-1)) SA[bkt[chr(i)]--]=i;
+      size_t ni = n-i-1;
+      if(b_s[ni]==0){
+          if(isLMS(ni,ni-1)) SA[bkt[chr(ni)]--]=ni;
       }else{
-          rank=r_s(i+1), eb=s_s(rank+1)-1;
-          if(isLMS(i,eb)) SA[bkt[chr(i)]--]=i;
+          rank=r_s(ni+1), eb=s_s(rank+1)-1;
+          if(isLMS(ni,eb)) SA[bkt[chr(ni)]--]=ni;
       }
   }
   
-  induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt);  
+  induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt);
   induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level);  
-
+  
   free(bkt);
   free(l_bkt);
   sgt.clear();
   
   // compact all the sorted substrings into the first n1 items of s
   size_t n1=0;
-  //vector<uint_s> sts(nseq+1,0);
   uint_s *sts = (uint_s *)malloc(sizeof(uint_s)*(nseq+1)); for(i=0; i<(nseq+1); i++) sts[i]=0;
   for(i=0;i<n;i++){
       uint_s pos=SA[i];
@@ -182,44 +185,50 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   
   // find the lexicographic names of all substrings
   // insert the first substring
-  uint_s name=1, prev=0; uint_s pos = prev = SA[0]; 
-  uint_s *names = (uint_s *)malloc(sizeof(uint_s)*n); for(i=0; i<n; i++) names[i]=EMPTY;
-  if(n1>0) names[pos]=name-1;
-  for(i=1; i<n1; ++i) {
-        size_t pp=0, pv=0;
-        pos=SA[i]; bool diff=false;
-        size_t rank=r_s(pos+1), rank_p=r_s(prev+1);
-        size_t curr=s_s(rank), len=s_s(rank+1)-curr; 
-        size_t curr_p=s_s(rank_p), len_p=s_s(rank_p+1)-curr_p;
+  uint_s name=1;
+  if(n1 > 0){
+    uint_s *names = (uint_s *)malloc(sizeof(uint_s)*n); for(i=0; i<n; i++) names[i]=EMPTY;
+    uint_s prev = SA[0]; uint_s pos = SA[0]; 
+    names[pos]=name-1;
+    size_t rank_prev = r_s(prev+1); size_t sb_prev = s_s(rank_prev);
+    for(i=1; i<n1; ++i) {
+          size_t pp=0, pv=0;
+          pos=SA[i]; bool diff=false;
+          rank = r_s(pos+1); sb = s_s(rank);
+          
+          size_t ind = pos, ind_prev = prev;
+          //check starting characters
+          if(chr(ind)!=chr(ind_prev) || tget(ind)!=tget(ind_prev)){ diff=true; }
+          pp=ind, pv=ind_prev;
 
-        for(size_t d=0; d<n; ++d){
-            //compute cyclic index
-            j=curr+((pos-curr+d)%(len)); 
-            size_t j_p=curr_p+((prev-curr_p+d)%(len_p)); 
-            // if(prev==-1 || chr(j)!=chr(j_p) || tget(j)!=tget(j_p)) // TODO: check why prev can be < 0
-            if(prev==-1 || chr(j)!=chr(j_p) || tget(j)!=tget(j_p)) // TODO: check why prev can be < 0
-            { 
-                diff=true; break;
-            }
-            else{
-              if(d>0 && (isLMS(j,pp) || isLMS(j_p,pv)))
-                break;
-            }
-            pp=j,pv=j_p;
-        }
-
-        if(diff){ name++; prev=pos; }
+          while(!diff){
+              //check the other characters in cyclic way
+              if(b_s[ind_prev+1]==0){ind_prev++;}
+              else{ ind_prev = sb_prev; }
+              if(b_s[ind+1]==0){ind++;}
+              else{ ind = sb; }
+              if(chr(ind)!=chr(ind_prev) || tget(ind)!=tget(ind_prev)) 
+              { 
+                  diff=true; break;
+              }
+              else{ // we stop the comparison when we find another s*
+                if(isLMS(ind,pp) || isLMS(ind_prev,pv))
+                  break;
+              }
+              pp=ind,pv=ind_prev;
+          }
+        
+        if(diff){ name++; prev=pos; sb_prev = sb; }
         names[pos]=name-1;
     }
   
-  j = n-1;
-  if(n1 > 0){
-    for(int i=n-1;i>-1;i--){
-        if(names[i]!=EMPTY){SA[j--]=names[i];}
+    j = n-1;
+    for(i=0;i<n;i++){
+        if(names[n-i-1]!=EMPTY){SA[j--]=names[n-i-1];}
     }
+      
+    free(names);
   }
-    
-  free(names);
   
   // s1 is done now
   uint_s *SA1=SA, *s1=SA+n-n1;  
@@ -231,6 +240,7 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   } else { // stop the recursion, generate the suffix array of s1 directly
       for(i=0; i<n1; i++){ SA1[s1[i]] = i; }
   }
+  
   
   // stage 3: induce the result for the original problem
   
@@ -248,20 +258,24 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
           else{ if(tget(sb)==0){ l_bkt[chr(sb)]++; } }
           for(size_t k=sb+1;k<eb;k++){
               if(isLMS(k,k-1)){ s1[j++]=k; }
-              else{ if(tget(k)==0) {l_bkt[chr(k)]++; } } 
+              else{ if(tget(k)==0) { l_bkt[chr(k)]++; } } 
           }
       }
   }
+  
+  assert(j==n1);
     
   for(i=0; i<n1; i++) {SA1[i]=s1[SA1[i]];} // get index in s1
    
-  if(n1>0) for(i=n1; i<n; i++) SA[i]=EMPTY; // init SA[n1..n-1]
-    
-  getBuckets(s, bkt, n, K, cs, true); // find ends of buckets
+  if(n1>0){ // if at least one s* is not a singleton
+      for(i=n1; i<n; i++) SA[i]=EMPTY; // init SA[n1..n-1]
+      getBuckets(s, bkt, n, K, cs, true); // find ends of buckets
+  }
   
-  for(i=n1-1; i>=0; i--) {
-      j=SA[i]; SA[i]=EMPTY;
-      SA[bkt[chr(j)]--]=j;}
+  for(i=0; i < n1; i++){
+      j=SA[n1-i-1]; SA[n1-i-1]=EMPTY;
+      SA[bkt[chr(j)]--]=j;
+  }
 
   induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt); 
   induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level);

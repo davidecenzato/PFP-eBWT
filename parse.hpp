@@ -1,8 +1,7 @@
-/* 
- * File:   parse.hpp
- * Author: hejans
- *
- * Created on February 12, 2021, 11:11 AM
+/*
+ * Code to build the inverted list of the eBWT of a circular Prefix Free Parse.
+ * 
+ * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/parse.hpp
  */
 
 #ifndef PARSE_HPP
@@ -62,7 +61,7 @@ public:
     read_file(tmp_filename.c_str(), sts);
     // create bit vector for starting positions
     sdsl::bit_vector tmp(size+1,0); b_d = tmp; b_d[size]=1;
-    for(int i=0;i<sts.size();i++){b_d[sts[i]]=1;}
+    for(size_t i=0;i<sts.size();i++){b_d[sts[i]]=1;}
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
     select_b_d = sdsl::bit_vector::select_1_type(&b_d);
     
@@ -75,8 +74,8 @@ public:
     buildBitIl();
     
     // build vector of starting character offsets
-    offset.resize(temp.size()); int j=0;
-    for(int i=0;i<ilP.size();i++){
+    offset.resize(temp.size()); size_t j=0;
+    for(size_t i=0;i<ilP.size();i++){
         if(b_st[i]==1){
             offset[j] = temp[rank_b_d(saP[ilP[i]]+1)-1]; j++;
         }
@@ -95,7 +94,9 @@ public:
             verbose("Computing cSA of the parse");
             _elapsed_time(
                 // build SA using circular SA-IS algorithm
+                std::cout << "Starting computing cSA" << std::endl;
                 csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
+                std::cout << "end" << std::endl;
             );
         }
         
@@ -117,12 +118,12 @@ public:
         b_il.resize(ilP.size()+1);
         b_st.resize(ilP.size());
         b_il[0]=1; b_il[ilP.size()]=1;
-        size_t prev = ebwtP[ilP[0]];
+        uint_p prev = ebwtP[ilP[0]];
         if(b_d[saP[ilP[0]]]==1){b_st[0]=1;}else{b_st[0]=0;}
-        for(int i=1;i<ilP.size();i++)
+        for(size_t i=1;i<ilP.size();i++)
         {   
             if(b_d[saP[ilP[i]]]==1){b_st[i]=1;}else{b_st[i]=0;}
-            size_t next = ebwtP[ilP[i]];
+            uint_p next = ebwtP[ilP[i]];
             if(next!=prev){b_il[i]=1;}
             else{b_il[i]=0;}
             prev = next;
@@ -134,6 +135,9 @@ public:
     void checkParseSize(){
         std::cout << "Checking parse size." << std::endl;
         if(p.size() > 0x7FFFFFFE) {
+            std::cerr << "Input containing more than 2^32 words" << std::endl;
+            std::cout << 0x7FFFFFFE << std::endl;
+            std::cout << p.size() << std::endl;
             die("Input containing more than 2^31-2 phrases!\n");
             die("Please use 64 bit version\n");
             exit(1); }
@@ -153,7 +157,7 @@ public:
     void makeEBWT(){
      // build the eBWT of the parsing using circular SA
      uint_p pc = 0;
-     for (int i=0; i<saP.size();i++){
+     for (size_t i=0; i<saP.size();i++){
          if(b_d[saP[i]]==1){ 
              pc = p[select_b_d(rank_b_d(saP[i]+1)+1)-1]-1;
              ebwtP[i] = pc;
@@ -182,7 +186,7 @@ public:
         for (size_t i = 0; i < vec.size(); ++i)
         {
             uint_p cs = vec[i];
-            size_t index = psum[cs]++;
+            uint_s index = psum[cs]++;
             out[index] = i;
         }
     }
