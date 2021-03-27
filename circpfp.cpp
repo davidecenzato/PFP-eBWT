@@ -252,18 +252,18 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
     FILE *offset_file = open_aux_file(arg.inputFileName.c_str(),EXTOFF0,"wb");
   
     // main loop on the chars of the input file
-    int c;
+    uint8_t c;
     KR_window krw(arg.w);
     uint64_t total_char = 0;
     
     gzFile fp;
     kseq_t *seq;
-    int l;
+    long int l;
     //p st;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
     while ((l =  kseq_read(seq)) >= 0) {
-        uint64_t start_char=0, i=0;
+        uint64_t start_char=0; size_t i=0;
         string first_word(""); string next_word(""); string pword("");
         for (i = 0; i < seq->seq.l; i++) {
             c = std::toupper(seq->seq.s[i]);
@@ -290,7 +290,7 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
         total_char += krw.tot_char;
         assert(first_word.size() >= arg.w);
         // check if exist a trigger string in final word
-        for (size_t i = 0; i < arg.w - 1; i++) {
+        for (i = 0; i < arg.w - 1; i++) {
             c = first_word[i];
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
@@ -364,7 +364,7 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
   // recompute occ as an extra check
   vector<occ_int_t> occ(wfreq.size()+1,0); // ranks are zero based
   uint64_t hash, phash, fc;
-  uint32_t len = 0; uint64_t start = 0;
+  uint64_t start = 0, len = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
   map <p,uint32_t> startFreq;

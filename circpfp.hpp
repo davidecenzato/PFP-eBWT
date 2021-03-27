@@ -2,6 +2,7 @@ extern "C" {
 #include "xerrors.h"
 }
 #include <vector>
+#include <istream>
 pthread_mutex_t map_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct Res {
@@ -19,7 +20,7 @@ typedef struct {
 } mt_data;
 
 bool is_valid_base(char base) {
-    switch (std::toupper(base)) {
+    switch (base) {
         case 'A': case 'C': case 'G': case 'T': case 'N': return true;
         default: return false;
     }
@@ -47,21 +48,21 @@ void *cyclic_mt_parse_fasta(void *dx)
   // prepare for parsing
   f.seekg(d->true_start); // move to the beginning of assigned region
   KR_window krw(arg->w);
-  int c, pc = '\n'; string word = ""; string fword=""; string final_word="";
+  uint8_t c, pc = '\n'; string word = ""; string fword = ""; string final_word = "";
   uint64_t pos = 0, start_char = 0;
   bool first_trigger = 0;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
-  int counter = 0;
+  // step when we find the newline
   while((c != 10)){
       c = f.get();
       current_pos++;
   }
   pc = c;
+  assert(is_valid_base(std::toupper(f.peek())));
   // parse the sequence
-  while( (pc != EOF) && current_pos <= d->true_end + 1) {
-      counter ++;
+  while( (pc != EOF) && current_pos <= d->true_end) {
       c = f.get();
       current_pos++;
       c = std::toupper(c);
@@ -84,7 +85,7 @@ void *cyclic_mt_parse_fasta(void *dx)
           pc = c; i++;
       }
       else{ 
-        if(c == EOF || c == '>'){
+        if(c == '>' || c == EOF || current_pos >= d->true_end){
             d->parsed += krw.tot_char;
             for (size_t i = 0; i < arg->w - 1; i++) {
                 c = fword[i];
@@ -96,14 +97,13 @@ void *cyclic_mt_parse_fasta(void *dx)
                     d->words++;
                 }
             }
-            
             final_word = word + fword.erase(0,arg->w - 1);
             save_update_word(final_word,arg->w,*wordFreq,d->parse,1);
             d->words++; 
             krw.reset();
             first_trigger = 0; start_char=0; i=0;
             word = fword = final_word = "";
-            while(  ((c = f.get()) != EOF) ){
+            while(  ((c = f.get()) != EOF) && current_pos <= d->true_end ){
                 current_pos++;
                 if(c=='\n'){break;}
              }
@@ -131,24 +131,35 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf)
     fseek(fp, 0L, SEEK_END);
     size_t size = ftell(fp);
     rewind(fp);
-    std::vector<size_t> th_sts(arg.th);
-    th_sts[0] = 1;
-    for (int i = 1; i < arg.th+1; ++i) {
+    std::vector<size_t> th_sts(arg.th+1);
+    th_sts[0] = 1; th_sts[arg.th] = size;
+    for (int i = 1; i < arg.th; ++i) {
       th_sts[i] = (size_t) (size / arg.th) * i;
     }
   
+    if(arg.verbose) {
     cout << "Thread: " << arg.th << endl;
     cout << "Total size: " << size << endl;
-    cout << "------------------------" << endl;
+    cout << "------------------------" << endl; }
   
-    int c = fgetc(fp), hp = 1; bool sf = 0;
-    int tstart = 1, tend = 1;
-    int nt = 1;
+    uint8_t c = fgetc(fp); size_t hp = 1; bool sf = 0;
+    size_t tstart = 1, tend = 1;
+    size_t nt = 1;
     // this loop scans the Fasta file in order to properly divide it up
     // for the threads, so that they don't accidently start in a ">" header.
     // As soon as a proper start and end position has been found, execute the thread 
-    for(int i=1;i<th_sts.size()+1;i++){
-      if(sf){
+    for(int i=1;i<th_sts.size()-1;i++){
+        
+        size_t start = th_sts[i];
+        size_t end = th_sts[i+1];
+        fseek(fp, start, SEEK_SET);
+        //cout << "scanning " << start << " - " << end << endl;
+        for(size_t j=start; j<end; ++j){
+            c = fgetc(fp);
+            if(c == '>'){hp=j;sf=1;break;}
+        }
+        
+        if(sf==1){
             sf=0;
             tend = hp-1;
             // prepare and execute thread j-1
@@ -164,12 +175,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf)
             xpthread_create(&t[nt-1],NULL,&cyclic_mt_parse_fasta,&td[nt-1],__LINE__,__FILE__);
             nt++;
             tstart = hp+1;
-        }
-        int start = th_sts[i-1];
-        int end = th_sts[i];
-        for(int j=start; j<end; j++){
-            c = fgetc(fp);
-            if(c == '>'){hp=j;sf=1;}
         }
     }
     
