@@ -3,7 +3,6 @@
  * 
  */
 
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -33,6 +32,7 @@ using namespace std;
 typedef struct {
    string inputFileName = "";
    int w = 10;
+   bool rle = 0;
 } Args;
 
 
@@ -46,10 +46,12 @@ static void parseArgs(int argc, char** argv, Args *arg ) {
     printf(" %s",argv[i]);
   puts("\n");
 
-  while ((c = getopt( argc, argv, "w:") ) != -1) {
+  while ((c = getopt( argc, argv, "w:r") ) != -1) {
     switch(c) {
       case 'w':
       arg->w = atoi(optarg); break;
+      case 'r':
+      arg->rle = 1; break;
       case '?':
       puts("Unknown option. Use -h for help.");
       exit(1);
@@ -82,7 +84,7 @@ int main(int argc, char** argv) {
     start_wc = time(NULL);
     
     cout << "Computing eBWT of the text..." << endl;
-    pfp pfp(pars,dict,arg.inputFileName,arg.w);
+    pfp pfp(pars,dict,arg.inputFileName,arg.w,arg.rle);
     
     cout << "Building the eBWT of Text took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";
     
