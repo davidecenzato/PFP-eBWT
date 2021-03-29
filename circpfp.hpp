@@ -19,12 +19,13 @@ typedef struct {
   FILE *parse, *o;
 } mt_data;
 
+/*
 bool is_valid_base(char base) {
     switch (base) {
         case 'A': case 'C': case 'G': case 'T': case 'N': return true;
         default: return false;
     }
-}
+}*/
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
 void *cyclic_mt_parse_fasta(void *dx)
@@ -49,25 +50,26 @@ void *cyclic_mt_parse_fasta(void *dx)
   f.seekg(d->true_start); // move to the beginning of assigned region
   KR_window krw(arg->w);
   uint8_t c, pc = '\n'; string word = ""; string fword = ""; string final_word = "";
-  uint64_t pos = 0, start_char = 0;
+  uint64_t start_char = 0;
   bool first_trigger = 0;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
   // step when we find the newline
-  while((c != 10)){
+  while((c != '\n')){
       c = f.get();
       current_pos++;
   }
   pc = c;
-  assert(is_valid_base(std::toupper(f.peek())));
+  //assert(is_valid_base(std::toupper(f.peek())));
   // parse the sequence
   while( (pc != EOF) && current_pos <= d->true_end) {
       c = f.get();
       current_pos++;
       c = std::toupper(c);
-      if(is_valid_base(c)){
-          if(c<= Dollar) die("Invalid char found in input file. Exiting...");
+      //if(is_valid_base(c)){
+      if(c > 64){ // A is 65 in ascii table. 
+          if(c<= Dollar || c> 90) die("Invalid char found in input file. Exiting...");
           word.append(1, c);
           if(first_trigger == 0){fword.append(1, c);}
           uint64_t hash = krw.addchar(c);
@@ -90,13 +92,19 @@ void *cyclic_mt_parse_fasta(void *dx)
             for (size_t i = 0; i < arg->w - 1; i++) {
                 c = fword[i];
                 word.append(1, c);
-                pos++;
+                if(first_trigger == 0){fword.append(1, c);}
                 uint64_t hash = krw.addchar(c);
                 if(hash%arg->p==0){
-                    save_update_word(word,arg->w,*wordFreq,d->parse,0);
-                    d->words++;
+                    if(first_trigger==0){
+                        first_trigger = 1, start_char = i;
+                        if(fwrite(&start_char,sizeof(start_char),1,d->o)!=1) die("offset write error");
+                        word.erase(0,word.size() - arg->w);
+                    }else{
+                        save_update_word(word,arg->w,*wordFreq,d->parse,0);
+                        d->words++;}
                 }
             }
+            if(first_trigger==0) { cerr << "No trigger strings found." << endl; exit(1); }
             final_word = word + fword.erase(0,arg->w - 1);
             save_update_word(final_word,arg->w,*wordFreq,d->parse,1);
             d->words++; 
@@ -161,7 +169,8 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf)
         
         if(sf==1){
             sf=0;
-            tend = hp-1;
+            //tend = hp-1;
+            tend = hp;
             // prepare and execute thread j-1
             td[nt-1].wordFreq = &wf;
             td[nt-1].arg = &arg;

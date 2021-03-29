@@ -262,16 +262,19 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
     //p st;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
+    int seqn=0;
     while ((l =  kseq_read(seq)) >= 0) {
+        seqn++;
+        bool f_trg = 0;
         uint64_t start_char=0; size_t i=0;
-        string first_word(""); string next_word(""); string pword("");
+        string first_word(""); string next_word(""); 
         for (i = 0; i < seq->seq.l; i++) {
             c = std::toupper(seq->seq.s[i]);
             if (c <= Dollar) {cerr << "Invalid char found in input file: no additional chars will be read\n"; break;}
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
             if (hash%arg.p==0 && krw.current == arg.w) {
-                start_char = i;
+                start_char = i; f_trg = 1;
                 if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error");
                 first_word = string(next_word);
                 next_word.erase(0,next_word.size() - arg.w); break;
@@ -282,23 +285,27 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
             if (hash%arg.p==0) {
-                pword = next_word;
                 save_update_word(next_word,arg.w,wordFreq,parse_file,0);
             }
         }
            
         total_char += krw.tot_char;
-        assert(first_word.size() >= arg.w);
+        if(f_trg) { assert(first_word.size() >= arg.w); }
         // check if exist a trigger string in final word
+        if(!f_trg) first_word = next_word.substr(0,arg.w - 1);
         for (i = 0; i < arg.w - 1; i++) {
             c = first_word[i];
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
             if(hash%arg.p==0){
-                pword = next_word;
-                save_update_word(next_word,arg.w,wordFreq,parse_file,0);
+                if(!f_trg) { start_char = i; f_trg = 1; if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error"); 
+                            first_word = string(next_word);
+                            next_word.erase(0,next_word.size() - arg.w); }
+                else{
+                    save_update_word(next_word,arg.w,wordFreq,parse_file,0); }
             }
         }
+        if(!f_trg) { cerr << "No trigger strings found." << endl; exit(1); }
         // join first and last word
         string final_word = next_word + first_word.erase(0,arg.w-1);
         save_update_word(final_word,arg.w,wordFreq,parse_file,1);
