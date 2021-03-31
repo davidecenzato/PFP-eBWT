@@ -46,7 +46,7 @@ public:
           //alphabet_size(alphabet_size_)
   {
     // read file
-    std::string tmp_filename = filename + std::string(".parse");
+    std::string tmp_filename = filename + std::string(".eparse");
     read_file(tmp_filename.c_str(), p);
     alphabet_size = *std::max_element(p.begin(),p.end());
     size = p.size();
@@ -96,7 +96,6 @@ public:
                 // build SA using circular SA-IS algorithm
                 std::cout << "Starting computing cSA" << std::endl;
                 csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
-                std::cout << "end" << std::endl;
             );
         }
         

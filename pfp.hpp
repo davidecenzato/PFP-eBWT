@@ -38,9 +38,10 @@ private:
     bool rle;
     
     // for rle eBWT
-    FILE *bwt_file_len;
+    FILE *ebwt_file_len;
+    FILE *ebwt_file_heads;
     // for plain eBWT
-    FILE *bwt_file;
+    FILE *ebwt_file;
     FILE *I_file;
     FILE* nratio;
     
@@ -93,18 +94,18 @@ public:
             if(rle)
             {
                 // Write the head
-                if (fputc(head, bwt_file) == EOF)
+                if (fputc(head, ebwt_file_heads) == EOF)
                     error("BWT write error 1");
                 
                 // Write the length
-                if (fwrite(&length, BWTBYTES, 1, bwt_file_len) != 1)
+                if (fwrite(&length, BWTBYTES, 1, ebwt_file_len) != 1)
                     error("BWT write error 2");
 
             }else{
                 // if not rle write plain ebwt
                 for(size_t i = 0; i < length; ++i)
                 {
-                    if (fputc(head, bwt_file) == EOF)
+                    if (fputc(head, ebwt_file) == EOF)
                         error("BWT write error 1");
                 }
             }
@@ -149,18 +150,23 @@ public:
     {
         assert(dict.d[dict.saD[0]] == EndOfDict);
 
-        std::string outfile = filename + std::string(".ebwt");
-        if ((bwt_file = fopen(outfile.c_str(), "w")) == nullptr)
-            error("open() file " + outfile + " failed");
-
-        outfile = filename + std::string(".I");
+        std::string outfile = filename + std::string(".I");
         if((I_file = fopen(outfile.c_str(), "w")) == nullptr)
             error("open() file " + outfile + " failed");
         
         if(rle)
         {    
+            outfile = filename + std::string(".ebwt.heads");
+            if ((ebwt_file_heads = fopen(outfile.c_str(), "w")) == nullptr)
+                error("open() file " + outfile + " failed");
+
             outfile = filename + std::string(".ebwt.len");
-            if ((bwt_file_len = fopen(outfile.c_str(), "w")) == nullptr)
+            if ((ebwt_file_len = fopen(outfile.c_str(), "w")) == nullptr)
+                error("open() file " + outfile + " failed");
+        }else{
+
+            outfile = filename + std::string(".ebwt");
+            if ((ebwt_file = fopen(outfile.c_str(), "w")) == nullptr)
                 error("open() file " + outfile + " failed");
         }
 
@@ -275,10 +281,10 @@ public:
         // print last run
         print_ebwt();
         // close output files
-        fclose(bwt_file);
         fclose(I_file);
         // close rle lengths file if rle was used
-        if(rle){ fclose(bwt_file_len); }   
+        if(rle){ fclose(ebwt_file_len); fclose(ebwt_file_heads);}
+        else { fclose(ebwt_file); }   
         
         //write characters/runs ratio
         outfile = filename + std::string(".ebwt.r");

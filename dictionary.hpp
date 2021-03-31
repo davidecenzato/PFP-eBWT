@@ -36,7 +36,7 @@ public:
              size_t w)
   {
     // Building dictionary from file
-    std::string tmp_filename = filename + std::string(".dict");
+    std::string tmp_filename = filename + std::string(".edict");
     read_file(tmp_filename.c_str(), d);
     // Creating bit vector for concatenated dictionary
     b_d = sdsl::bit_vector(d.size(),0);
@@ -50,7 +50,7 @@ public:
     select_b_d = sdsl::bit_vector::select_1_type(&b_d);
     // reading occurrences file
 
-    tmp_filename = filename + std::string(".occ");
+    tmp_filename = filename + std::string(".eocc");
     read_file(tmp_filename.c_str(), occ);
     
     tmp_filename = filename + std::string(".fchar");
