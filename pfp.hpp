@@ -67,8 +67,6 @@ public:
         return true;
     }
     
-    //static bool sort_pairs (pq_t i, pq_t j) {return(i.first<j.first);}
-    
     inline bool inc(phrase_suffix_t& s)
     {
         s.i++;
@@ -77,7 +75,8 @@ public:
         s.sn = dict.saD[s.i];
         s.is_starting = dict.b_s[s.sn];
         s.phrase = dict.rank_b_d(s.sn+1);
-        if(s.is_starting){s.st_pos=s.sn-dict.select_b_d(s.phrase);}
+        if(s.is_starting){ s.st_pos=s.sn-dict.select_b_d(s.phrase); }
+        else{ s.st_pos=0; }
         s.suffix_length = dict.select_b_d(dict.rank_b_d(s.sn + 1) + 1) - s.sn -1;
         assert(!is_valid(s) || (s.phrase > 0 && s.phrase < pars.ilP.size()));
         
@@ -128,7 +127,7 @@ public:
         ins_sofar += length_;
         length += length_;
         
-        if(is_st){
+        if(is_st && st_pos > 0){
             if(pars.b_st[ind]==1){
                 if(pars.offset[(pars.rank_st(ind+1)-1)] == st_pos){
                     start = ins_sofar-1;

@@ -96,7 +96,7 @@ void *cyclic_mt_parse_fasta(void *dx)
                 uint64_t hash = krw.addchar(c);
                 if(hash%arg->p==0){
                     if(first_trigger==0){
-                        first_trigger = 1, start_char = i;
+                        first_trigger = 1, start_char = krw.tot_char;
                         if(fwrite(&start_char,sizeof(start_char),1,d->o)!=1) die("offset write error");
                         word.erase(0,word.size() - arg->w);
                     }else{

@@ -298,7 +298,7 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
             next_word.append(1, c);
             uint64_t hash = krw.addchar(c);
             if(hash%arg.p==0){
-                if(!f_trg) { start_char = i; f_trg = 1; if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error"); 
+                if(!f_trg) { start_char = krw.tot_char; f_trg = 1; if(fwrite(&start_char,sizeof(start_char),1,offset_file)!=1) die("offset write error"); 
                             first_word = string(next_word);
                             next_word.erase(0,next_word.size() - arg.w); }
                 else{
