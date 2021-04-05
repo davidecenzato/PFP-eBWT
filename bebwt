@@ -9,6 +9,8 @@ Tool to build the EBWT for higly repetive files.
 dirname = os.path.dirname(os.path.abspath(__file__))
 parse_exe       =  os.path.join(dirname, "circpfp.x")
 parseNT_exe     =  os.path.join(dirname, "circpfpNT.x")
+parseReads_exe       =  os.path.join(dirname, "circpfpr.x")
+parseReadsNT_exe     =  os.path.join(dirname, "circpfprNT.x")
 bebwtNT_exe      =  os.path.join(dirname, "bebwtNT.x")
 bebwtNT64_exe      =  os.path.join(dirname, "bebwtNT64.x")
 
@@ -18,7 +20,9 @@ def main():
     parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
     parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
+    parser.add_argument('-n', help='number KR-windows (def. None)', default=0, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
+    parser.add_argument('-d', help='process input ad a read set (def. False)', action='store_true')
     parser.add_argument('-v',  help='verbose',action='store_true')
     parser.add_argument('--keep',  help='keep auxiliary files (debug only)',action='store_false')
     parser.add_argument('--parsing',  help='stop after the parsing phase (debug only)',action='store_true')
@@ -33,14 +37,25 @@ def main():
         # ---------- Parsing of the input file
         start0 = start = time.time()
 
-        if args.t>0:
-            command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
-                    exe = os.path.join(args.bigbwt_dir,parse_exe),
-                    wsize=args.wsize, modulus = args.mod, th=args.t, file=args.input)
+        if args.d:
+            if args.t>0:
+                command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
+                        exe = os.path.join(args.bigbwt_dir,parseReads_exe),
+                        wsize=args.wsize, modulus = args.mod, th=args.t, wnumb=args.n, file=args.input)
+            else:
+                command = "{exe} {file} -w {wsize} -p {modulus} -n {wnumb}".format(
+                        exe = os.path.join(args.bigbwt_dir,parseReadsNT_exe),
+                        wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
         else:
-            command = "{exe} {file} -w {wsize} -p {modulus}".format(
-                    exe = os.path.join(args.bigbwt_dir,parseNT_exe),
-                    wsize=args.wsize, modulus = args.mod, file=args.input)
+            if args.t>0:
+                command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
+                        exe = os.path.join(args.bigbwt_dir,parse_exe),
+                        wsize=args.wsize, modulus = args.mod, th=args.t, file=args.input)
+            else:
+                command = "{exe} {file} -w {wsize} -p {modulus}".format(
+                        exe = os.path.join(args.bigbwt_dir,parseNT_exe),
+                        wsize=args.wsize, modulus = args.mod, file=args.input)
+
 
         if args.v: command += " -v"
 
