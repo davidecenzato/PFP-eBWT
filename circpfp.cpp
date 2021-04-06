@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <ctime>
 #include <map>
+#include <set>
 #include <assert.h>
 #include <errno.h>
 #include <zlib.h>
@@ -32,7 +33,7 @@ typedef uint32_t word_int_t;
 // maximum number of occurrences of a single word
 #define MAX_WORD_OCC (UINT32_MAX)
 typedef uint32_t occ_int_t;
-typedef pair <uint64_t,uint64_t> p;
+typedef pair <uint32_t,uint32_t> p;
 
 // struct containing command line parameters and other globals
 struct Args {
@@ -374,7 +375,7 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
   uint64_t start = 0, len = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
-  map <p,uint32_t> startFreq;
+  set<p> startChr;
 
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
@@ -396,18 +397,19 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
         if(s!=1) die("Unexpected offset EOF");
         word_int_t rank = wfreq.at(phash).rank;
         uint64_t len = wfreq.at(phash).str.length();
-        uint64_t off = (len-fc-1);
+        uint32_t off = uint32_t(len-fc-1);
         s = fwrite(&off,sizeof(off),1,newoff);
         if(s!=1) die("Error writing to new offset file");
         p st = p(rank,off);
-        if(startFreq.find(st)==startFreq.end()){
-            startFreq[st] = 1;
-            }else{startFreq[st]+=1;}    
+        //if(startFreq.find(st)==startFreq.end()){
+        //    startFreq[st] = 1;
+        //    }else{startFreq[st]+=1;}
+        if(startChr.find(st)==startChr.end()){ startChr.insert(st); }    
         }
     }
 
-  for (auto& x: startFreq) {
-      if(fwrite(&x.first,sizeof(x.first),1,fchar)!=1) die("error writing to first char file");
+  for (auto& x: startChr) {
+      if(fwrite(&x,sizeof(x),1,fchar)!=1) die("error writing to first char file");
   }
     
   if(fclose(newp)!=0) die("Error closing new parse file");

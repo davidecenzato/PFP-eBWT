@@ -28,7 +28,7 @@ private:
     
 public:  
     std::vector<uint_s> ilP;
-    std::vector<uint64_t> offset;
+    std::vector<uint32_t> offset;
     sdsl::bit_vector b_il;
     sdsl::bit_vector::select_1_type select_ilist;
     sdsl::bit_vector::rank_1_type rank_st;
@@ -65,7 +65,7 @@ public:
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
     select_b_d = sdsl::bit_vector::select_1_type(&b_d);
     
-    std::vector<uint64_t> temp(offset.size(),0);
+    std::vector<uint32_t> temp(offset.size(),0);
     tmp_filename = filename + std::string(".offset");
     read_file(tmp_filename.c_str(), temp);
     

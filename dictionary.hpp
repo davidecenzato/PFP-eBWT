@@ -16,7 +16,7 @@ extern "C" {
 // TODO: Extend it to integer alphabets
 class dictionary{
 private:
-  std::vector<uint64_t> fchar;
+  std::vector<uint32_t> fchar;
   
 public:
   std::vector<uint8_t> d;
@@ -35,6 +35,7 @@ public:
   dictionary(std::string filename,
              size_t w)
   {
+    std::cout << "fin qua -2" << std::endl;
     // Building dictionary from file
     std::string tmp_filename = filename + std::string(".edict");
     read_file(tmp_filename.c_str(), d);
@@ -45,6 +46,7 @@ public:
     {
         if(d[i]==1){b_d[i+1]=1;}
     }
+    std::cout << "fin qua -1" << std::endl;
 
     rank_b_d = sdsl::bit_vector::rank_1_type(&b_d);
     select_b_d = sdsl::bit_vector::select_1_type(&b_d);
@@ -63,6 +65,7 @@ public:
     fchar.clear();
     rank_b_s = sdsl::bit_vector::rank_1_type(&b_s);
     
+    std::cout << "fin qua " << std::endl;
     // build data structures for the dictionary.
     build();
     
@@ -72,7 +75,7 @@ public:
         
         // initialize data structures to support rank and select on the bitvector
         // of the concatenated dictionary
-        
+        std::cout << "fin qua 2" << std::endl;
         // resize SA and LCP arrays of the dictionary
         saD.resize(d.size());
         lcpD.resize(d.size());

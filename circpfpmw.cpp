@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <ctime>
 #include <map>
+#include <set>
 #include <assert.h>
 #include <errno.h>
 #include <zlib.h>
@@ -32,14 +33,9 @@ typedef uint32_t word_int_t;
 // maximum number of occurrences of a single word
 #define MAX_WORD_OCC (UINT32_MAX)
 typedef uint32_t occ_int_t;
-typedef pair <uint64_t,uint64_t> p;
+typedef pair <uint32_t,uint32_t> p;
 
 vector<uint64_t> primes{1999999913, 1999999927, 1999999943, 1999999973, 2000000011, 2000000033, 2000000063, 2000000087, 2000000089, 3000000109};
-//vector<uint64_t> primes{2000003, 2000029, 2000039, 2000081, 2000083, 2000093, 2000107, 2000113, 2000143, 2000147};
-//vector<uint64_t> primes{999953, 999959, 999961, 999979, 999983, 1000003, 1000033, 1000037, 1000039, 1000081};
-//vector<uint64_t> primes{19999981, 19999999, 20000003, 200000023, 200000033, 200000047, 200000059, 200000063, 200000069, 200000077};
-//vector<uint64_t> primes{49999991, 500000017, 500000021, 500000047, 500000059, 500000063, 500000101, 500000131, 500000141, 500000161};
-//vector<uint64_t> primes{999999929, 999999937, 1000000007, 1000000009, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103};
 vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103, 1000000207, 1000000297};
 
 // struct containing command line parameters and other globals
@@ -113,8 +109,8 @@ void parseArgs( int argc, char** argv, Args& arg ) {
        print_help(argv,arg);
     }
     // check algorithm parameters
-    if(arg.w <4) {
-      cout << "Windows size must be at least 4\n";
+    if(arg.w < 2) {
+      cout << "Windows size must be at least 2\n";
       exit(1);
     }
     if(arg.p<10) {
@@ -315,12 +311,9 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
     gzFile fp;
     kseq_t *seq;
     long int l;
-    int num_seq = 1;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
-    int seqn=1;
     while ((l =  kseq_read(seq)) >= 0) {
-        num_seq++;
         bool f_trg = 0, win_f = 0;
         uint64_t start_char=0; size_t i=0;
         string first_word(""); string next_word(""); 
@@ -387,9 +380,8 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
         save_update_word(final_word,arg.w,wordFreq,parse_file,1);
         for(int j=0;j<nw;j++){ windows[j].reset(); }
         if (c <= Dollar) break;
-        ++seqn;
     }
-    for(int j=0;j<nw;j++){ windows[j].delete_window(); }
+    for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
     kseq_destroy(seq);
     gzclose(fp);
 
@@ -452,7 +444,8 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
   uint64_t start = 0, len = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
-  map <p,uint32_t> startFreq;
+  //map <p,uint32_t> startFreq;
+  set<p> startChr;
 
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
@@ -474,18 +467,25 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
         if(s!=1) die("Unexpected offset EOF");
         word_int_t rank = wfreq.at(phash).rank;
         uint64_t len = wfreq.at(phash).str.length();
-        uint64_t off = (len-fc-1);
+        uint32_t off = uint32_t(len-fc-1);
         s = fwrite(&off,sizeof(off),1,newoff);
         if(s!=1) die("Error writing to new offset file");
         p st = p(rank,off);
-        if(startFreq.find(st)==startFreq.end()){
-            startFreq[st] = 1;
-            }else{startFreq[st]+=1;}    
+        if(startChr.find(st)==startChr.end()){
+          startChr.insert(st);
+        }
+        //if(startFreq.find(st)==startFreq.end()){
+        //    startFreq[st] = 1;
+        //    }else{startFreq[st]+=1;}   
+
         }
     }
 
-  for (auto& x: startFreq) {
-      if(fwrite(&x.first,sizeof(x.first),1,fchar)!=1) die("error writing to first char file");
+  //for (auto& x: startFreq) {
+  //    if(fwrite(&x.first,sizeof(x.first),1,fchar)!=1) die("error writing to first char file");
+  //}
+  for (auto& x: startChr) {
+      if(fwrite(&x,sizeof(x),1,fchar)!=1) die("error writing to first char file");
   }
     
   if(fclose(newp)!=0) die("Error closing new parse file");
