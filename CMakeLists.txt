@@ -56,13 +56,19 @@ include_directories(${PROJECT_SOURCE_DIR})
 add_executable(circpfp.x circpfp.cpp utils.c xerrors.c)
 target_link_libraries(circpfp.x malloc_count z pthread)
 
+add_executable(circpfpr.x circpfpmw.cpp utils.c xerrors.c)
+target_link_libraries(circpfpr.x malloc_count z pthread)
+
 add_executable(circpfpNT.x circpfp.cpp utils.c)
 target_link_libraries(circpfpNT.x malloc_count z)
 target_compile_options(circpfpNT.x PUBLIC "-DNOTHREADS")
 
+add_executable(circpfprNT.x circpfpmw.cpp utils.c)
+target_link_libraries(circpfprNT.x malloc_count z)
+target_compile_options(circpfprNT.x PUBLIC "-DNOTHREADS")
+
 add_executable(bebwtNT.x ebwt.cpp utils.c csais.cpp)
 target_link_libraries(bebwtNT.x malloc_count dl z gsacak sdsl  divsufsort divsufsort64)
-
 
 add_executable(bebwtNT64.x ebwt.cpp utils.c csais.cpp)
 target_link_libraries(bebwtNT64.x malloc_count dl z gsacak64 sdsl  divsufsort divsufsort64)
