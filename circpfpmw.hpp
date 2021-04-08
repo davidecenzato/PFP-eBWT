@@ -1,6 +1,3 @@
-
-// Insert header
-
 #ifndef CIRCPFPMW_H
 #define CIRCPFPMW_H
 
@@ -25,6 +22,7 @@ typedef struct {
   size_t parsed, words;  // output
   FILE *parse, *o;
   uint16_t nw = 0;
+  vector<bool> used;
 } mt_data;
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
@@ -148,9 +146,9 @@ void *parallel_windows_n(void *dx)
   // prepare for parsing
   uint16_t nw = 1; size_t beginning = d->true_start;
   f.seekg(d->true_start); // move to the beginning of assigned region
-  vector<KR_window> windows;
+  vector<KR_window> windows; vector<bool> used(primes.size(),0); used[0]=1;
   for(uint16_t i=0;i<nw;i++){ windows.push_back(KR_window(arg->w,primes[i]));}
-  uint8_t c, pc = '\n'; string word = ""; bool trg_f = 0;
+  uint8_t c, pc = '\n'; string word = ""; bool trg_f = 0; uint16_t cw = 0; bool new_w = 0; size_t nseq = 1;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
@@ -188,13 +186,19 @@ void *parallel_windows_n(void *dx)
             }
             for(int j=0;j<nw;j++){ windows[j].reset(); }
             word = "";
-            if(trg_f==0){ current_pos = beginning; windows.push_back(KR_window(arg->w,primes[nw])); ++nw; f.seekg(beginning); }
-            else{
+            if(trg_f){
+                new_w = 0;  cw = 1; ++nseq;
                 while(  ((c = f.get()) != EOF) && current_pos <= d->true_end ){
                     current_pos++;
                     if(c=='\n'){break;}
-                 }
+                }
                 pc = c; beginning = current_pos; trg_f = 0;
+            }else{
+                current_pos = beginning; f.seekg(beginning);
+                if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
+                else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
+                if(cw == primes.size()) { cerr << "Error: no windows found for a sequence." << endl; exit(1); }
+                for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg->w,primes[j])); cw=j; used[j]=1; break;}}
             }
         }
      }
@@ -202,6 +206,7 @@ void *parallel_windows_n(void *dx)
   
   for(int j=0;j<nw;j++){ windows[j].delete_window(); }
   d->nw = nw;
+  d->used = used;
   f.close(); 
   return NULL;
 }
@@ -243,7 +248,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
         size_t start = th_sts[i];
         size_t end = th_sts[i+1];
         fseek(fp, start, SEEK_SET);
-        //cout << "scanning " << start << " - " << end << endl;
         for(size_t j=start; j<end; ++j){
             c = fgetc(fp);
             if(c == '>'){hp=j;sf=1;break;}
@@ -269,7 +273,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
             tstart = hp+1;
         }
     }
-    
     tend = size;
     td[nt-1].wordFreq = &wf;
     td[nt-1].arg = &arg;
@@ -283,12 +286,15 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     if(mode==1){xpthread_create(&t[nt-1],NULL,&cyclic_mt_parse_fasta,&td[nt-1],__LINE__,__FILE__);}
     else{xpthread_create(&t[nt-1],NULL,&parallel_windows_n,&td[nt-1],__LINE__,__FILE__);}
     
-    size_t tot_char=0; uint16_t max_nw = 1;
+    size_t tot_char=0; uint16_t max_nw = 1; vector<bool> used(primes.size(),0);
     if(!mode){
         for(int i=0;i<nt;i++) {
             xpthread_join(t[i],NULL,__LINE__,__FILE__); 
-            if(!mode) {max_nw = max(max_nw,td[i].nw);}
+            max_nw = max(max_nw,td[i].nw); 
+            for(uint16_t j = 0; j < td[i].used.size(); j++){if(td[i].used[j]){used[j]=1;}}
         }
+        uint16_t cnt = 0; 
+        for(uint16_t j = 0; j < used.size(); j++){if(used[j]){primes[cnt]=primes[j]; ++cnt;}}
     }
     else{
         // wait for the threads to finish (in order) and close output files

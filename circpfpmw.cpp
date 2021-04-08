@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <ctime>
 #include <map>
+#include <set>
 #include <assert.h>
 #include <errno.h>
 #include <zlib.h>
@@ -32,15 +33,13 @@ typedef uint32_t word_int_t;
 // maximum number of occurrences of a single word
 #define MAX_WORD_OCC (UINT32_MAX)
 typedef uint32_t occ_int_t;
-typedef pair <uint64_t,uint64_t> p;
+typedef pair <uint32_t,uint32_t> p;
 
-vector<uint64_t> primes{1999999913, 1999999927, 1999999943, 1999999973, 2000000011, 2000000033, 2000000063, 2000000087, 2000000089, 3000000109};
-//vector<uint64_t> primes{2000003, 2000029, 2000039, 2000081, 2000083, 2000093, 2000107, 2000113, 2000143, 2000147};
-//vector<uint64_t> primes{999953, 999959, 999961, 999979, 999983, 1000003, 1000033, 1000037, 1000039, 1000081};
-//vector<uint64_t> primes{19999981, 19999999, 20000003, 200000023, 200000033, 200000047, 200000059, 200000063, 200000069, 200000077};
-//vector<uint64_t> primes{49999991, 500000017, 500000021, 500000047, 500000059, 500000063, 500000101, 500000131, 500000141, 500000161};
-//vector<uint64_t> primes{999999929, 999999937, 1000000007, 1000000009, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103};
-vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103, 1000000207, 1000000297};
+vector<uint64_t> primes{1999999913, 1999999927, 1999999943, 1999999973, 2000000011, 2000000033, 2000000063, 2000000087, 2000000089, 2000000099,
+                        2000000153, 2000000203, 2000000227, 2000000407, 2000000441, 2000000533, 2000000609, 2000000707, 2000000797, 2000000843};
+
+vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103, 1000000207, 1000000297,
+                         1000000363, 1000000403, 1000000427, 1000000439, 1000000579, 1000000637, 1000000787, 1000000933, 1000000993, 1000001011};
 
 // struct containing command line parameters and other globals
 struct Args {
@@ -113,7 +112,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
        print_help(argv,arg);
     }
     // check algorithm parameters
-    if(arg.w <4) {
+    if(arg.w < 4) {
       cout << "Windows size must be at least 4\n";
       exit(1);
     }
@@ -256,14 +255,13 @@ uint16_t compute_windows_n(Args& arg){
  
     string fnam = arg.inputFileName;   
     // main loop on the chars of the input file
-    uint8_t c; uint16_t nw = 1; size_t i=0;
-    vector<KR_window> windows;
-    for(i=0;i<nw;i++){ windows.push_back(KR_window(arg.w,primes[i]));}
+    uint8_t c; uint16_t nw = 1, cw = 1; size_t i=0;
+    vector<KR_window> windows; vector<bool> used(primes.size(),0); used[0]=1;
+    for(i=0;i<nw;i++){ windows.push_back(KR_window(arg.w,primes[i])); }
     
     gzFile fp;
     kseq_t *seq;
-    size_t nseq = 1;
-    //p st;
+    size_t nseq = 1; bool new_w = 0;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
     long int l = kseq_read(seq);
@@ -286,11 +284,19 @@ uint16_t compute_windows_n(Args& arg){
                 }
             }
         }
-        if(trg_f){ l =  kseq_read(seq); nseq++; }
-        else{ windows.push_back(KR_window(arg.w,primes[nw])); ++nw; }
+        if(trg_f){ l =  kseq_read(seq); nseq++; new_w = 0;  cw = 1;}
+        else{ 
+            if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
+            else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
+            if(cw == primes.size()) { cerr << "Error: no windows found for sequence: " << nseq << endl; exit(1); }
+            for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg.w,primes[j])); cw=j; used[j]=1; break;}}
+            }
+            
         for(uint16_t j=0;j<nw-1;j++){ windows[j].reset(); }
     }
     for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
+    uint16_t cnt = 0; 
+    for(uint16_t i = 0; i < used.size(); i++){ if(used[i]){ primes[cnt]=primes[i]; ++cnt; } }
     return nw;
 }
 
@@ -315,12 +321,9 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
     gzFile fp;
     kseq_t *seq;
     long int l;
-    int num_seq = 1;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
-    int seqn=1;
     while ((l =  kseq_read(seq)) >= 0) {
-        num_seq++;
         bool f_trg = 0, win_f = 0;
         uint64_t start_char=0; size_t i=0;
         string first_word(""); string next_word(""); 
@@ -387,9 +390,8 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
         save_update_word(final_word,arg.w,wordFreq,parse_file,1);
         for(int j=0;j<nw;j++){ windows[j].reset(); }
         if (c <= Dollar) break;
-        ++seqn;
     }
-    for(int j=0;j<nw;j++){ windows[j].delete_window(); }
+    for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
     kseq_destroy(seq);
     gzclose(fp);
 
@@ -452,7 +454,8 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
   uint64_t start = 0, len = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
-  map <p,uint32_t> startFreq;
+  //map <p,uint32_t> startFreq;
+  set<p> startChr;
 
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
@@ -474,18 +477,18 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
         if(s!=1) die("Unexpected offset EOF");
         word_int_t rank = wfreq.at(phash).rank;
         uint64_t len = wfreq.at(phash).str.length();
-        uint64_t off = (len-fc-1);
+        uint32_t off = uint32_t(len-fc-1);
         s = fwrite(&off,sizeof(off),1,newoff);
         if(s!=1) die("Error writing to new offset file");
         p st = p(rank,off);
-        if(startFreq.find(st)==startFreq.end()){
-            startFreq[st] = 1;
-            }else{startFreq[st]+=1;}    
+        if(startChr.find(st)==startChr.end()){
+          startChr.insert(st);
+          }
         }
     }
 
-  for (auto& x: startFreq) {
-      if(fwrite(&x.first,sizeof(x.first),1,fchar)!=1) die("error writing to first char file");
+  for (auto& x: startChr) {
+      if(fwrite(&x,sizeof(x),1,fchar)!=1) die("error writing to first char file");
   }
     
   if(fclose(newp)!=0) die("Error closing new parse file");
@@ -523,9 +526,8 @@ int main(int argc, char** argv) {
         if(arg.th<=1){
             if(arg.n==0){
                 uint16_t nw = compute_windows_n(arg);
-                cout << "nw " << nw << endl;
-                arg.n = nw; }
-            totChar = parse_fasta_reads(arg,wordFreq);         
+                arg.n = nw; cout << "no. windows needed: " << nw << endl; }
+            totChar = parse_fasta_reads(arg,wordFreq);      
         }
         else
         {
@@ -536,6 +538,7 @@ int main(int argc, char** argv) {
             if(arg.n==0){
                 Res res = parallel_parse_fasta(arg, wordFreq, 0);
                 arg.n = res.nw;
+                cout << "no. windows needed: " << res.nw << endl;
             }
             Res res = parallel_parse_fasta(arg, wordFreq, 1);
             totChar = res.tot_char; nt = res.us_th;
