@@ -36,19 +36,25 @@ typedef uint32_t occ_int_t;
 typedef pair <uint32_t,uint32_t> p;
 
 vector<uint64_t> primes{1999999913, 1999999927, 1999999943, 1999999973, 2000000011, 2000000033, 2000000063, 2000000087, 2000000089, 2000000099,
-                        2000000153, 2000000203, 2000000227, 2000000407, 2000000441, 2000000533, 2000000609, 2000000707, 2000000797, 2000000843};
+                        2000000153, 2000000203, 2000000227, 2000000407, 2000000441, 2000000533, 2000000609, 2000000707, 2000000797, 2000000843,
+                        2000000957, 2000000983, 2000001001, 2000001013, 2000001043, 2000001049, 2000001089, 2000001097, 2000001103, 2000001109};
 
 vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103, 1000000207, 1000000297,
-                         1000000363, 1000000403, 1000000427, 1000000439, 1000000579, 1000000637, 1000000787, 1000000933, 1000000993, 1000001011};
+                         1000000363, 1000000403, 1000000427, 1000000439, 1000000579, 1000000637, 1000000787, 1000000933, 1000000993, 1000001011,
+                         1000001021, 1000001053, 1000001087, 1000001099, 1000001137, 1000001161, 1000001203, 1000001213, 1000001237, 1000001263};
+
+vector<uint64_t> to_remove;
+vector<vector<uint64_t>> to_remove_mt;
 
 // struct containing command line parameters and other globals
 struct Args {
    string inputFileName = "";
-   size_t w = 10;            // sliding window size and its default
-   size_t p = 100;           // modulus for establishing stopping w-tuples
-   uint16_t n = 1;
+   size_t w = 10;         // sliding window size and its default
+   size_t p = 100;        // modulus for establishing stopping w-tuples
+   uint16_t n = 1;        // number of KR-windows
    int th=0;              // number of helper threads
    int verbose=0;         // verbosity level
+   bool c = 0;            // check sequences periodicity 
 };
 
 struct word_stats {
@@ -80,7 +86,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
     puts("");
   
     string sarg;
-    while ((c = getopt( argc, argv, "p:w:ht:vn:") ) != -1) {
+    while ((c = getopt( argc, argv, "p:w:ht:vcn:") ) != -1) {
        switch(c) {
          case 'w':
          sarg.assign( optarg );
@@ -96,6 +102,8 @@ void parseArgs( int argc, char** argv, Args& arg ) {
          arg.th = stoi( sarg ); break;
          case 'v':
             arg.verbose++; break;
+         case 'c':
+            arg.c = 1; break;
          case 'h':
             print_help(argv, arg); exit(1);
          case '?':
@@ -186,6 +194,25 @@ struct KR_window {
   
 };
 
+void LPS(string &str, uint16_t n, vector<uint16_t> &lps){
+    
+    uint16_t len = 0, i; //lenght of the previous longest prefix suffix
+    lps[0] = 0; i = 1; 
+ 
+    while (i < n)
+    {
+       if (str[i] == str[len]){
+           len++; lps[i] = len;
+           i++;
+       }
+       else 
+       {
+          if (len != 0){ len = lps[len-1]; }
+          else { lps[i] = 0; i++; }
+       }
+    }
+}
+
 static void save_update_word(string& w, unsigned int minsize, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, bool last_word);
 
 #ifndef NOTHREADS
@@ -261,7 +288,9 @@ uint16_t compute_windows_n(Args& arg){
     
     gzFile fp;
     kseq_t *seq;
-    size_t nseq = 1; bool new_w = 0;
+    size_t nseq = 1;
+    bool new_w = 0;
+
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
     long int l = kseq_read(seq);
@@ -272,7 +301,7 @@ uint16_t compute_windows_n(Args& arg){
             word.append(1, c);
             for(uint16_t j = 0; j<nw; ++j){
                 uint64_t hash = windows[j].addchar(c);
-                if (hash%arg.p==0 && windows[j].current == arg.w) {trg_f=1;break;}
+                if(hash%arg.p==0 && windows[j].current == arg.w) { trg_f=1; break; }
             }
         }
         if(trg_f==0){
@@ -280,23 +309,35 @@ uint16_t compute_windows_n(Args& arg){
                 c = word[i];
                 for(uint16_t j = 0; j<nw; ++j){
                     uint64_t hash = windows[j].addchar(c);
-                    if (hash%arg.p==0 && windows[j].current == arg.w) {trg_f=1;break;}
+                    if (hash%arg.p==0 && windows[j].current == arg.w){ trg_f=1; break; }
                 }
             }
         }
-        if(trg_f){ l =  kseq_read(seq); nseq++; new_w = 0;  cw = 1;}
+        if(cw+1 == primes.size()){
+            trg_f = 1;  to_remove.push_back(nseq);  
+            windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw;  
+        }else{ 
+            if(word.size()<3*arg.w) {trg_f = 1;  to_remove.push_back(nseq); } 
+        }
+        
+        if(arg.c && !trg_f){
+            vector<uint16_t> lps(word.size(),0); LPS(word,word.size(),lps);
+            if(word.size() > 0 && word.size()%(word.size()-lps[lps.size()-1]) == 0 && lps[lps.size()-1] > 0){ trg_f = 1; to_remove.push_back(nseq); }
+        }
+              
+        if(trg_f){ l =  kseq_read(seq); nseq++; new_w = 0;  cw = 0;}
         else{ 
             if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
             else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
-            if(cw == primes.size()) { cerr << "Error: no windows found for sequence: " << nseq << endl; exit(1); }
             for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg.w,primes[j])); cw=j; used[j]=1; break;}}
             }
             
-        for(uint16_t j=0;j<nw-1;j++){ windows[j].reset(); }
+        for(uint16_t j=0;j<nw;j++){ windows[j].reset(); }
     }
+    
     for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
     uint16_t cnt = 0; 
-    for(uint16_t i = 0; i < used.size(); i++){ if(used[i]){ primes[cnt]=primes[i]; ++cnt; } }
+    for(uint16_t i = 0; i < used.size(); i++){if(used[i]){primes[cnt]=primes[i]; ++cnt;}}
     return nw;
 }
 
@@ -311,19 +352,32 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
     FILE *parse_file = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
     // open the words offset file
     FILE *offset_file = open_aux_file(arg.inputFileName.c_str(),EXTOFF0,"wb");
+    // open filtered reads file
+    FILE *filtered = open_aux_file(arg.inputFileName.c_str(),EXTFILT,"wb"); 
   
     // main loop on the chars of the input file
     uint8_t c; int nw = arg.n;
     vector<KR_window> windows;
     for(uint16_t i=0;i<nw;i++){ windows.push_back(KR_window(arg.w,primes[i]));}
     uint64_t total_char = 0;
+    size_t next_tr = 0, tr_i = 0; if(to_remove.size()>0){ next_tr = to_remove[tr_i]; }
     
     gzFile fp;
     kseq_t *seq;
     long int l;
+    int num_seq = 1;
     fp = gzopen(fnam.c_str(), "r");
     seq = kseq_init(fp);
+    size_t seqn=0;
     while ((l =  kseq_read(seq)) >= 0) {
+        ++seqn;
+        if(seqn == next_tr){
+            if(tr_i+1 < to_remove.size()){ ++tr_i; next_tr = to_remove[tr_i]; }else{next_tr = 0;}
+            size_t s = fwrite(seq->seq.s, sizeof(char), seq->seq.l, filtered);
+            if(s!=seq->seq.l) die("Error writing to filtered file");
+            if(fputc('\n',filtered)==EOF) die("Error writing newline to filtered file");
+            continue;
+        }
         bool f_trg = 0, win_f = 0;
         uint64_t start_char=0; size_t i=0;
         string first_word(""); string next_word(""); 
@@ -344,8 +398,7 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
                 }
             }
             if(f_trg==1) break;
-        }
-        
+        }     
         for (i=i+1; i< seq->seq.l; i++){
             c = std::toupper(seq->seq.s[i]);
             next_word.append(1, c);
@@ -354,12 +407,11 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
                 uint64_t hash = windows[j].addchar(c);
                 if(win_f == 0){
                     if (hash%arg.p==0) {
-                        save_update_word(next_word,arg.w,wordFreq,parse_file,0); win_f = 1;
+                        save_update_word(next_word,arg.w,wordFreq,parse_file,0); win_f = 1;                  
                     }
                 }
             }
-        }
-           
+        }           
         total_char += windows[0].tot_char;
         if(f_trg) { assert(first_word.size() >= arg.w); }
         // check if exist a trigger string in final word
@@ -384,20 +436,21 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
                 }
             }
         }
-        if(!f_trg) { cerr << "No trigger strings found, use more windows." << endl; exit(1);}
+        if(!f_trg) { cerr << "No trigger strings found, use more windows." << endl; cout << "seq: " << seqn << endl; exit(1);}
         // join first and last word
         string final_word = next_word + first_word.erase(0,arg.w-1);
         save_update_word(final_word,arg.w,wordFreq,parse_file,1);
         for(int j=0;j<nw;j++){ windows[j].reset(); }
         if (c <= Dollar) break;
     }
-    for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
+    for(int j=0;j<nw;j++){ windows[j].delete_window(); }
     kseq_destroy(seq);
     gzclose(fp);
 
     // close input and output files
     if(fclose(parse_file)!=0) die("Error closing parse file");
     if(fclose(offset_file)!=0) die("Error closing offset file");
+    if(fclose(filtered)!=0) die("Error closing filtered file");
 
     return total_char;
 }
@@ -510,7 +563,7 @@ int main(int argc, char** argv) {
     cout << "File name: " << arg.inputFileName << endl;
     cout << "Windows size: " << arg.w << endl;
     cout << "Stop word modulus: " << arg.p << endl;
-    cout << "Windows number: " << arg.n << endl;
+    if(arg.n > 0) { cout << "Windows number: " << arg.n << endl; }
     
     if(arg.w<5){ primes = primelw; }
     // measure elapsed wall clock time
@@ -521,12 +574,14 @@ int main(int argc, char** argv) {
     uint64_t totChar; int nt = 0; // tot characters seen
     
     // ------------ parse input fasta file
-    //exit(1);
     try{
         if(arg.th<=1){
             if(arg.n==0){
                 uint16_t nw = compute_windows_n(arg);
-                arg.n = nw; cout << "no. windows needed: " << nw << endl; }
+                arg.n = nw; cout << "no. windows needed: " << nw << endl;
+            }
+            cout << "Removed sequences: ";
+            for(int i=0;i<to_remove.size();i++){ cout << to_remove[i] << " "; } cout << endl;
             totChar = parse_fasta_reads(arg,wordFreq);      
         }
         else

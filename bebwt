@@ -22,8 +22,9 @@ def main():
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
     parser.add_argument('-n', help='number KR-windows (def. None)', default=0, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
-    parser.add_argument('-d', help='process input ad a read set (def. False)', action='store_true')
     parser.add_argument('-v',  help='verbose',action='store_true')
+    parser.add_argument('--reads', help='process input ad a read set (def. False)', action='store_true')
+    parser.add_argument('--period', help='remove periodic sequences (def. False)', action='store_true')
     parser.add_argument('--keep',  help='keep auxiliary files (debug only)',action='store_false')
     parser.add_argument('--parsing',  help='stop after the parsing phase (debug only)',action='store_true')
     args = parser.parse_args()
@@ -37,7 +38,7 @@ def main():
         # ---------- Parsing of the input file
         start0 = start = time.time()
 
-        if args.d:
+        if args.reads:
             if args.t>0:
                 command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
                         exe = os.path.join(args.bigbwt_dir,parseReads_exe),
@@ -58,6 +59,7 @@ def main():
 
 
         if args.v: command += " -v"
+        if args.period: command += " -c"
 
         print("==== Parsing. Command:", command)
         if(execute_command(command,logfile,logfile_name)!=True):

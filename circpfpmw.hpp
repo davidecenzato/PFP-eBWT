@@ -1,3 +1,6 @@
+
+// Insert header
+
 #ifndef CIRCPFPMW_H
 #define CIRCPFPMW_H
 
@@ -19,11 +22,32 @@ typedef struct {
   map<uint64_t,word_stats> *wordFreq; // shared dictionary
   Args *arg;       // command line input
   size_t true_start, true_end; // input
-  size_t parsed, words;  // output
+  size_t parsed, words, seqn;  // output
   FILE *parse, *o;
   uint16_t nw = 0;
   vector<bool> used;
+  vector<uint64_t> to_rmv;
+  string filtered;
+  int th_id;
 } mt_data;
+
+void skip_seq(uint64_t &nseq, uint64_t &current_pos, size_t &next_tr, size_t &tr_i,
+              string &filt_seq, uint8_t &c, uint8_t &pc, ifstream &f, mt_data &d){
+    
+    while(nseq==next_tr){
+        while(  ((c = f.get()) != '>') && current_pos < d.true_end){
+            ++current_pos; filt_seq.append(1,std::toupper(c));
+        }
+        ++nseq; ++current_pos;
+        if(tr_i+1 < to_remove_mt[d.th_id].size()){ ++tr_i; next_tr = to_remove_mt[d.th_id][tr_i]; }
+        else{next_tr = 0;}
+    }
+    while(  ((c = f.get()) != EOF) && current_pos < d.true_end ){
+        current_pos++;
+        if(c=='\n'){break;}
+    }
+    pc = c;
+}
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
 void *cyclic_mt_parse_fasta(void *dx)
@@ -32,11 +56,11 @@ void *cyclic_mt_parse_fasta(void *dx)
   mt_data *d = (mt_data *) dx;
   Args *arg = d->arg;
   map<uint64_t,word_stats> *wordFreq = d-> wordFreq;
+  string filt_seq = "";
 
   if(arg->verbose>1)
     printf("Scanning from %ld, size %ld as a FASTA record\n",d->true_start,d->true_end-d->true_start);
   if(d->true_end-d->true_start == 0) return NULL;
-  //cout << "Scanning from " << d->true_start << " to " << d->true_end << endl;
 
   // open input file
   ifstream f(arg->inputFileName);
@@ -50,24 +74,21 @@ void *cyclic_mt_parse_fasta(void *dx)
   vector<KR_window> windows;
   for(uint16_t i=0;i<arg->n;i++){ windows.push_back(KR_window(arg->w,primes[i]));}
   uint8_t c, pc = '\n'; string word = ""; string fword = ""; string final_word = "";
-  uint64_t start_char = 0;
+  uint64_t start_char = 0, nseq = 1;
+  size_t next_tr = 0, tr_i = 0; if(to_remove_mt[d->th_id].size()>0){ next_tr = to_remove_mt[d->th_id][tr_i]; }
   bool first_trigger = 0;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
-  // step when we find the newline
-  while((c != '\n')){
-      c = f.get();
-      current_pos++;
-  }
-  pc = c;
+  // step when we find the correct starting point
+  skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, pc, f, *d);
   // parse the sequence
-  while( (pc != EOF) && current_pos <= d->true_end) {
+  while( current_pos < d->true_end ) {
       c = f.get();
       current_pos++;
       c = std::toupper(c);
       if(c > 64){ // A is 65 in ascii table. 
-          if(c<= Dollar || c> 90) die("Invalid char found in input file. Exiting...");
+          if(c<= Dollar || c> 90) { die("Invalid char found in input file. Exiting..."); }
           word.append(1, c);
           if(first_trigger == 0){ fword.append(1, c); }
           bool wind_f = 0;
@@ -88,7 +109,7 @@ void *cyclic_mt_parse_fasta(void *dx)
         pc = c; i++;
       }
       else{ 
-        if(c == '>' || c == EOF || current_pos >= d->true_end){
+          if(c == '>' || current_pos >= d->true_end-1){
             d->parsed += windows[0].tot_char;
             for (size_t i = 0; i < arg->w - 1; i++) {
                 c = fword[i];
@@ -114,17 +135,15 @@ void *cyclic_mt_parse_fasta(void *dx)
             d->words++; 
             for(int j=0;j<arg->n;j++){ windows[j].reset(); }
             first_trigger = 0; start_char=0; i=0;
-            word = fword = final_word = "";
-            while(  ((c = f.get()) != EOF) && current_pos <= d->true_end ){
-                current_pos++;
-                if(c=='\n'){break;}
-             }
-            pc = c;
+            word = fword = final_word = ""; ++nseq;
+            
+            skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, pc, f, *d);
         }
       }
     }
   
   for(int j=0;j<arg->n;j++){ windows[j].delete_window(); }
+  d->filtered = filt_seq;
   f.close(); 
   return NULL;
 }
@@ -149,6 +168,7 @@ void *parallel_windows_n(void *dx)
   vector<KR_window> windows; vector<bool> used(primes.size(),0); used[0]=1;
   for(uint16_t i=0;i<nw;i++){ windows.push_back(KR_window(arg->w,primes[i]));}
   uint8_t c, pc = '\n'; string word = ""; bool trg_f = 0; uint16_t cw = 0; bool new_w = 0; size_t nseq = 1;
+  vector<uint64_t> to_remove;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
@@ -159,7 +179,7 @@ void *parallel_windows_n(void *dx)
   }
   pc = c;
   // parse the sequence
-  while( (pc != EOF) && current_pos <= d->true_end) {
+  while( current_pos < d->true_end ) {
       c = f.get(); c = std::toupper(c);
       current_pos++;
       if(c > 64){ // A is 65 in ascii table. 
@@ -175,7 +195,7 @@ void *parallel_windows_n(void *dx)
         pc = c; i++;
       }
       else{ 
-        if(c == '>' || c == EOF || current_pos >= d->true_end){
+        if(c == '>' || current_pos >= d->true_end-1){
             for (size_t i = 0; i < arg->w - 1; i++) {
                 c = word[i];
                 bool wind_f = 0;
@@ -185,10 +205,22 @@ void *parallel_windows_n(void *dx)
                 }
             }
             for(int j=0;j<nw;j++){ windows[j].reset(); }
-            word = "";
+            if(cw+1 == primes.size()){
+                trg_f = 1;  to_remove.push_back(nseq); 
+                windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw;  
+            }else{
+                if(word.size()<3*arg->w) {trg_f = 1;  to_remove.push_back(nseq); } 
+            }
+            
+            if(arg->c && !trg_f){
+                vector<uint16_t> lps(word.size(),0); LPS(word,word.size(),lps);
+                if( (word.size() > 0) && (word.size()%(word.size()-lps[lps.size()-1]) == 0) && (lps[lps.size()-1] > 0)){ trg_f = 1; to_remove.push_back(nseq); }
+            }
+            
+            word.erase(0,word.size());
             if(trg_f){
-                new_w = 0;  cw = 1; ++nseq;
-                while(  ((c = f.get()) != EOF) && current_pos <= d->true_end ){
+                new_w = 0;  cw = 0; ++nseq;
+                while(  ((c = f.get()) != EOF) && current_pos < d->true_end ){
                     current_pos++;
                     if(c=='\n'){break;}
                 }
@@ -197,7 +229,6 @@ void *parallel_windows_n(void *dx)
                 current_pos = beginning; f.seekg(beginning);
                 if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
                 else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
-                if(cw == primes.size()) { cerr << "Error: no windows found for a sequence." << endl; exit(1); }
                 for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg->w,primes[j])); cw=j; used[j]=1; break;}}
             }
         }
@@ -207,6 +238,8 @@ void *parallel_windows_n(void *dx)
   for(int j=0;j<nw;j++){ windows[j].delete_window(); }
   d->nw = nw;
   d->used = used;
+  d->to_rmv = to_remove;
+  d->seqn = nseq;
   f.close(); 
   return NULL;
 }
@@ -218,6 +251,8 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     assert(arg.th>0);
     pthread_t t[arg.th];
     mt_data td[arg.th];
+    // open filtered reads file
+    FILE *filtered = open_aux_file(arg.inputFileName.c_str(),EXTFILT,"wb"); 
     // scan file for start positions and execute threads
     FILE* fp = fopen(arg.inputFileName.c_str(), "r");
     if (fp == NULL) {
@@ -238,7 +273,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     cout << "------------------------" << endl; }
   
     uint8_t c = fgetc(fp); size_t hp = 1; bool sf = 0;
-    size_t tstart = 1, tend = 1;
+    size_t tstart = 1, tend = 1, nseq = 1, seq_b = 0;
     size_t nt = 1;
     // this loop scans the Fasta file in order to properly divide it up
     // for the threads, so that they don't accidently start in a ">" header.
@@ -248,6 +283,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
         size_t start = th_sts[i];
         size_t end = th_sts[i+1];
         fseek(fp, start, SEEK_SET);
+        //cout << "scanning " << start << " - " << end << endl;
         for(size_t j=start; j<end; ++j){
             c = fgetc(fp);
             if(c == '>'){hp=j;sf=1;break;}
@@ -264,6 +300,8 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
             td[nt-1].true_end = tend;
             td[nt-1].words = 0;
             td[nt-1].parsed = 0;
+            td[nt-1].seqn = 0;
+            td[nt-1].th_id = nt-1;
             assert(td[nt-1].true_end <=size);
             td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
             td[nt-1].o = open_aux_file_num(arg.inputFileName.c_str(),EXTOFF0,nt-1,"wb");
@@ -280,6 +318,8 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     td[nt-1].true_end = tend;
     td[nt-1].words = 0;
     td[nt-1].parsed = 0;
+    td[nt-1].seqn = 0;
+    td[nt-1].th_id = nt-1;
     assert(td[nt-1].true_end <=size);
     td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
     td[nt-1].o = open_aux_file_num(arg.inputFileName.c_str(),EXTOFF0,nt-1,"wb");
@@ -288,18 +328,31 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     
     size_t tot_char=0; uint16_t max_nw = 1; vector<bool> used(primes.size(),0);
     if(!mode){
+        vector<uint64_t> th_seq(arg.th,0);
         for(int i=0;i<nt;i++) {
             xpthread_join(t[i],NULL,__LINE__,__FILE__); 
             max_nw = max(max_nw,td[i].nw); 
             for(uint16_t j = 0; j < td[i].used.size(); j++){if(td[i].used[j]){used[j]=1;}}
+            th_seq[i] = td[i].seqn;
+            to_remove_mt.push_back(td[i].to_rmv);
         }
         uint16_t cnt = 0; 
         for(uint16_t j = 0; j < used.size(); j++){if(used[j]){primes[cnt]=primes[j]; ++cnt;}}
+        vector<uint64_t> psum(arg.th,0); 
+        for(uint16_t j=1; j < psum.size(); j++){ psum[j] = psum[j-1]+th_seq[j-1]; }
+        cout << "Removed sequences: ";
+        for(int i=0;i<nt;i++) {
+            for(size_t j=0;j<td[i].to_rmv.size();j++){ cout << (td[i].to_rmv[j]+psum[i]-i) << " "; }
+        } cout << endl;
     }
     else{
         // wait for the threads to finish (in order) and close output files
         for(int i=0;i<nt;i++) {
             xpthread_join(t[i],NULL,__LINE__,__FILE__); 
+            if(td[i].filtered.size() > 0){
+                size_t s = fwrite(&td[i].filtered[0], sizeof(char), td[i].filtered.size(), filtered);
+                if(s!=td[i].filtered.size()) die("Error writing to filtered file"); 
+            }
             if(arg.verbose) {
             cout << "s:" << td[i].true_start << "  e:" << td[i].true_end << "  pa:";
             }
@@ -315,6 +368,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
         }
     }
     fclose(fp);
+    if(fclose(filtered)!=0) die("Error closing filtered file");
     Res res; res.tot_char = tot_char; res.us_th = nt; res.nw = max_nw;
     return res;
 }

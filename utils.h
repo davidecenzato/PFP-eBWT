@@ -19,8 +19,7 @@
 #define EXTOFF   "offset"
 #define EXTSTART "start"
 #define EXTFCHAR "fchar"
-
-
+#define EXTFILT  "filtered"
 
 void die(const char *s);
 FILE *open_aux_file(const char *base, const char *ext, const char *mode);
