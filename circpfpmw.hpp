@@ -22,7 +22,7 @@ typedef struct {
   map<uint64_t,word_stats> *wordFreq; // shared dictionary
   Args *arg;       // command line input
   size_t true_start, true_end; // input
-  size_t parsed, words, seqn;  // output
+  size_t parsed, words;  // output
   FILE *parse, *o;
   uint16_t nw = 0;
   vector<bool> used;
@@ -32,7 +32,7 @@ typedef struct {
 } mt_data;
 
 void skip_seq(uint64_t &nseq, uint64_t &current_pos, size_t &next_tr, size_t &tr_i,
-              string &filt_seq, uint8_t &c, uint8_t &pc, ifstream &f, mt_data &d){
+              string &filt_seq, uint8_t &c, ifstream &f, mt_data &d){
     
     while(nseq==next_tr){
         while(  ((c = f.get()) != '>') && current_pos < d.true_end){
@@ -46,7 +46,7 @@ void skip_seq(uint64_t &nseq, uint64_t &current_pos, size_t &next_tr, size_t &tr
         current_pos++;
         if(c=='\n'){break;}
     }
-    pc = c;
+
 }
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
@@ -73,7 +73,7 @@ void *cyclic_mt_parse_fasta(void *dx)
   f.seekg(d->true_start); // move to the beginning of assigned region
   vector<KR_window> windows;
   for(uint16_t i=0;i<arg->n;i++){ windows.push_back(KR_window(arg->w,primes[i]));}
-  uint8_t c, pc = '\n'; string word = ""; string fword = ""; string final_word = "";
+  uint8_t c; string word = ""; string fword = ""; string final_word = "";
   uint64_t start_char = 0, nseq = 1;
   size_t next_tr = 0, tr_i = 0; if(to_remove_mt[d->th_id].size()>0){ next_tr = to_remove_mt[d->th_id][tr_i]; }
   bool first_trigger = 0;
@@ -81,7 +81,7 @@ void *cyclic_mt_parse_fasta(void *dx)
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
   // step when we find the correct starting point
-  skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, pc, f, *d);
+  skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, f, *d);
   // parse the sequence
   while( current_pos < d->true_end ) {
       c = f.get();
@@ -106,7 +106,6 @@ void *cyclic_mt_parse_fasta(void *dx)
                     }
                 }
             }
-        pc = c; i++;
       }
       else{ 
           if(c == '>' || current_pos >= d->true_end-1){
@@ -137,7 +136,7 @@ void *cyclic_mt_parse_fasta(void *dx)
             first_trigger = 0; start_char=0; i=0;
             word = fword = final_word = ""; ++nseq;
             
-            skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, pc, f, *d);
+            skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, f, *d);
         }
       }
     }
@@ -163,12 +162,12 @@ void *parallel_windows_n(void *dx)
   }
   
   // prepare for parsing
-  uint16_t nw = 1; size_t beginning = d->true_start;
+  uint16_t nw = 1; size_t beginning = d->true_start; 
   f.seekg(d->true_start); // move to the beginning of assigned region
   vector<KR_window> windows; vector<bool> used(primes.size(),0); used[0]=1;
   for(uint16_t i=0;i<nw;i++){ windows.push_back(KR_window(arg->w,primes[i]));}
-  uint8_t c, pc = '\n'; string word = ""; bool trg_f = 0; uint16_t cw = 0; bool new_w = 0; size_t nseq = 1;
-  vector<uint64_t> to_remove;
+  uint8_t c; string word = ""; bool trg_f = 0, new_w = 0; size_t nseq = 1;
+  vector<uint64_t> to_remove; uint16_t cw = 0;
   
   // skip the header
   uint64_t current_pos = d->true_start; uint64_t i=0;
@@ -177,7 +176,6 @@ void *parallel_windows_n(void *dx)
       c = f.get();
       current_pos++;
   }
-  pc = c;
   // parse the sequence
   while( current_pos < d->true_end ) {
       c = f.get(); c = std::toupper(c);
@@ -185,52 +183,63 @@ void *parallel_windows_n(void *dx)
       if(c > 64){ // A is 65 in ascii table. 
           if(c<= Dollar || c> 90) die("Invalid char found in input file. Exiting...");
           word.append(1, c);
-          bool wind_f = 0;
-          for(uint16_t j=0;j<nw;j++){
-              uint64_t hash = windows[j].addchar(c);
-              if (hash%arg->p==0 && !wind_f && windows[j].current == arg->w){
-                  trg_f=1; break;
-                }
-            }
-        pc = c; i++;
+          if(!trg_f){
+            for(uint16_t j=0;j<nw;j++){
+                uint64_t hash = windows[j].addchar(c);
+                if (hash%arg->p==0 && windows[j].current == arg->w){ trg_f=1; break; }
+              }
+          }
       }
       else{ 
         if(c == '>' || current_pos >= d->true_end-1){
-            for (size_t i = 0; i < arg->w - 1; i++) {
-                c = word[i];
-                bool wind_f = 0;
-                for(uint16_t j=0;j<nw;j++){
-                    uint64_t hash = windows[j].addchar(c);
-                    if(hash%arg->p==0 && !wind_f){ trg_f=1; break; }
+            if(!trg_f){
+                for (size_t i = 0; i < arg->w - 1; i++) {
+                    c = word[i];
+                    bool wind_f = 0;
+                    for(uint16_t j=0;j<nw;j++){
+                        uint64_t hash = windows[j].addchar(c);
+                        if(hash%arg->p==0 && !wind_f){ trg_f=1; break; }
+                    }
+                    if(trg_f){ break; }
                 }
             }
-            for(int j=0;j<nw;j++){ windows[j].reset(); }
-            if(cw+1 == primes.size()){
-                trg_f = 1;  to_remove.push_back(nseq); 
-                windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw;  
-            }else{
-                if(word.size()<3*arg->w) {trg_f = 1;  to_remove.push_back(nseq); } 
-            }
             
-            if(arg->c && !trg_f){
+            bool rem = 0;
+            if(!trg_f){
+                // if we reached the maximum window number and we are not testing a new window
+                if(nw == arg->n && !new_w){
+                    trg_f = 1;  to_remove.push_back(nseq); rem = 1;
+                }else{
+                    if(cw+1 == arg->n){
+                        trg_f = 1;  to_remove.push_back(nseq); rem = 1;
+                        windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw; 
+                    }
+                }
+            }
+
+            if(arg->c && !rem && !new_w){
                 vector<uint16_t> lps(word.size(),0); LPS(word,word.size(),lps);
-                if( (word.size() > 0) && (word.size()%(word.size()-lps[lps.size()-1]) == 0) && (lps[lps.size()-1] > 0)){ trg_f = 1; to_remove.push_back(nseq); }
+                if(word.size() > 0 && word.size()%(word.size()-lps[lps.size()-1]) == 0 && lps[lps.size()-1] > 0){ trg_f = 1; to_remove.push_back(nseq); }
             }
             
             word.erase(0,word.size());
+            
             if(trg_f){
                 new_w = 0;  cw = 0; ++nseq;
                 while(  ((c = f.get()) != EOF) && current_pos < d->true_end ){
                     current_pos++;
                     if(c=='\n'){break;}
                 }
-                pc = c; beginning = current_pos; trg_f = 0;
-            }else{
+                beginning = current_pos; trg_f = 0;
+            }
+            else{ 
                 current_pos = beginning; f.seekg(beginning);
                 if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
-                else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
-                for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg->w,primes[j])); cw=j; used[j]=1; break;}}
+                else { new_w = 1; ++nw; }
+                for(uint16_t j=cw; j<arg->n; j++){ if(!used[j]){windows.push_back(KR_window(arg->w,primes[j])); cw=j; used[j]=1; break;}}
             }
+            
+            for(int j=0;j<nw;j++){ windows[j].reset(); }
         }
      }
   }
@@ -239,7 +248,6 @@ void *parallel_windows_n(void *dx)
   d->nw = nw;
   d->used = used;
   d->to_rmv = to_remove;
-  d->seqn = nseq;
   f.close(); 
   return NULL;
 }
@@ -283,7 +291,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
         size_t start = th_sts[i];
         size_t end = th_sts[i+1];
         fseek(fp, start, SEEK_SET);
-        //cout << "scanning " << start << " - " << end << endl;
         for(size_t j=start; j<end; ++j){
             c = fgetc(fp);
             if(c == '>'){hp=j;sf=1;break;}
@@ -291,7 +298,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
         
         if(sf==1){
             sf=0;
-            //tend = hp-1;
             tend = hp;
             // prepare and execute thread j-1
             td[nt-1].wordFreq = &wf;
@@ -300,7 +306,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
             td[nt-1].true_end = tend;
             td[nt-1].words = 0;
             td[nt-1].parsed = 0;
-            td[nt-1].seqn = 0;
             td[nt-1].th_id = nt-1;
             assert(td[nt-1].true_end <=size);
             td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
@@ -318,7 +323,6 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     td[nt-1].true_end = tend;
     td[nt-1].words = 0;
     td[nt-1].parsed = 0;
-    td[nt-1].seqn = 0;
     td[nt-1].th_id = nt-1;
     assert(td[nt-1].true_end <=size);
     td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
@@ -326,24 +330,18 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     if(mode==1){xpthread_create(&t[nt-1],NULL,&cyclic_mt_parse_fasta,&td[nt-1],__LINE__,__FILE__);}
     else{xpthread_create(&t[nt-1],NULL,&parallel_windows_n,&td[nt-1],__LINE__,__FILE__);}
     
-    size_t tot_char=0; uint16_t max_nw = 1; vector<bool> used(primes.size(),0);
+    size_t tot_char=0; vector<bool> used(primes.size(),0); size_t tot_rem = 0; uint16_t wind_n;
     if(!mode){
-        vector<uint64_t> th_seq(arg.th,0);
         for(int i=0;i<nt;i++) {
             xpthread_join(t[i],NULL,__LINE__,__FILE__); 
-            max_nw = max(max_nw,td[i].nw); 
-            for(uint16_t j = 0; j < td[i].used.size(); j++){if(td[i].used[j]){used[j]=1;}}
-            th_seq[i] = td[i].seqn;
+            for(uint16_t j = 0; j < td[i].used.size(); j++){if(td[i].used[j]){used[j]=1;} } 
+            tot_rem += td[i].to_rmv.size(); 
             to_remove_mt.push_back(td[i].to_rmv);
         }
-        uint16_t cnt = 0; 
+        uint16_t cnt = 0; wind_n = count(used.begin(), used.end(), 1);
         for(uint16_t j = 0; j < used.size(); j++){if(used[j]){primes[cnt]=primes[j]; ++cnt;}}
-        vector<uint64_t> psum(arg.th,0); 
-        for(uint16_t j=1; j < psum.size(); j++){ psum[j] = psum[j-1]+th_seq[j-1]; }
-        cout << "Removed sequences: ";
-        for(int i=0;i<nt;i++) {
-            for(size_t j=0;j<td[i].to_rmv.size();j++){ cout << (td[i].to_rmv[j]+psum[i]-i) << " "; }
-        } cout << endl;
+        cout << "no. windows needed: " << wind_n << endl;
+        cout << tot_rem << " sequences filtered" << endl;
     }
     else{
         // wait for the threads to finish (in order) and close output files
@@ -369,7 +367,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     }
     fclose(fp);
     if(fclose(filtered)!=0) die("Error closing filtered file");
-    Res res; res.tot_char = tot_char; res.us_th = nt; res.nw = max_nw;
+    Res res; res.tot_char = tot_char; res.us_th = nt; res.nw = wind_n;
     return res;
 }
 

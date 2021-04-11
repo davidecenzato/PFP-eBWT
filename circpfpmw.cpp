@@ -35,13 +35,13 @@ typedef uint32_t word_int_t;
 typedef uint32_t occ_int_t;
 typedef pair <uint32_t,uint32_t> p;
 
-vector<uint64_t> primes{1999999913, 1999999927, 1999999943, 1999999973, 2000000011, 2000000033, 2000000063, 2000000087, 2000000089, 2000000099,
-                        2000000153, 2000000203, 2000000227, 2000000407, 2000000441, 2000000533, 2000000609, 2000000707, 2000000797, 2000000843,
-                        2000000957, 2000000983, 2000001001, 2000001013, 2000001043, 2000001049, 2000001089, 2000001097, 2000001103, 2000001109};
+vector<uint64_t> primes{1999999913, 1999999927, 2000000011, 2000000089, 1999999943, 2000000087, 2000000441, 2000000099,
+                        2000000153, 2000000227, 2000001001, 2000000609, 2000000533, 2000000707, 2000001151, 2000001089,
+                        2000001103, 2000001127, 2000001511, 2000001539, 2000001583, 2000001677, 2000001821, 2000001929};
 
-vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000087, 1000000093, 1000000097, 1000000103, 1000000207, 1000000297,
-                         1000000363, 1000000403, 1000000427, 1000000439, 1000000579, 1000000637, 1000000787, 1000000933, 1000000993, 1000001011,
-                         1000001021, 1000001053, 1000001087, 1000001099, 1000001137, 1000001161, 1000001203, 1000001213, 1000001237, 1000001263};
+vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000009, 1000000007, 1000000181, 1000000223,
+                         1000000289, 1000000297, 1000000321, 1000000363, 1000000409, 1000000427, 1000000531, 1000000613,
+                         1000000829, 1000000787, 1000001011, 1000001053, 1000001099, 1000001137, 1000001161, 1000001203};
 
 vector<uint64_t> to_remove;
 vector<vector<uint64_t>> to_remove_mt;
@@ -51,7 +51,7 @@ struct Args {
    string inputFileName = "";
    size_t w = 10;         // sliding window size and its default
    size_t p = 100;        // modulus for establishing stopping w-tuples
-   uint16_t n = 1;        // number of KR-windows
+   uint16_t n = 3;        // maximum number of KR-windows
    int th=0;              // number of helper threads
    int verbose=0;         // verbosity level
    bool c = 0;            // check sequences periodicity 
@@ -208,7 +208,7 @@ void LPS(string &str, uint16_t n, vector<uint16_t> &lps){
        else 
        {
           if (len != 0){ len = lps[len-1]; }
-          else { lps[i] = 0; i++; }
+          else{ lps[i] = 0; i++; }
        }
     }
 }
@@ -303,34 +303,44 @@ uint16_t compute_windows_n(Args& arg){
                 uint64_t hash = windows[j].addchar(c);
                 if(hash%arg.p==0 && windows[j].current == arg.w) { trg_f=1; break; }
             }
+            if(trg_f){ break; }
         }
-        if(trg_f==0){
+        if(!trg_f){
             for(i=0;i<arg.w-1;i++){
                 c = word[i];
                 for(uint16_t j = 0; j<nw; ++j){
                     uint64_t hash = windows[j].addchar(c);
                     if (hash%arg.p==0 && windows[j].current == arg.w){ trg_f=1; break; }
                 }
+                if(trg_f) { break; }
             }
         }
-        if(cw+1 == primes.size()){
-            trg_f = 1;  to_remove.push_back(nseq);  
-            windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw;  
-        }else{ 
-            if(word.size()<3*arg.w) {trg_f = 1;  to_remove.push_back(nseq); } 
+        
+        bool rem = 0;
+        if(!trg_f){
+            // if we reached the maximum window number and we are not testing a new window
+            if(nw == arg.n && !new_w){
+                trg_f = 1;  to_remove.push_back(nseq); rem = 1;
+            }else{
+                if(cw+1 == primes.size()){
+                    trg_f = 1;  to_remove.push_back(nseq); rem = 1; 
+                    windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw; 
+                }
+            }
         }
         
-        if(arg.c && !trg_f){
-            vector<uint16_t> lps(word.size(),0); LPS(word,word.size(),lps);
-            if(word.size() > 0 && word.size()%(word.size()-lps[lps.size()-1]) == 0 && lps[lps.size()-1] > 0){ trg_f = 1; to_remove.push_back(nseq); }
+        if(arg.c && !rem && !new_w){
+            string read = seq->seq.s;
+            vector<uint16_t> lps(read.size(),0); LPS(read,read.size(),lps);
+            if(read.size() > 0 && read.size()%(read.size()-lps[lps.size()-1]) == 0 && lps[lps.size()-1] > 0){ trg_f = 1; to_remove.push_back(nseq); }
         }
               
         if(trg_f){ l =  kseq_read(seq); nseq++; new_w = 0;  cw = 0;}
         else{ 
             if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
-            else { new_w = 1; ++nw; if(nw > 10){ cerr << "Error: The dataset required too many windows." << endl; exit(1); }}
+            else { new_w = 1; ++nw; }
             for(uint16_t j=cw; j<primes.size(); j++){ if(!used[j]){windows.push_back(KR_window(arg.w,primes[j])); cw=j; used[j]=1; break;}}
-            }
+        }
             
         for(uint16_t j=0;j<nw;j++){ windows[j].reset(); }
     }
@@ -563,7 +573,7 @@ int main(int argc, char** argv) {
     cout << "File name: " << arg.inputFileName << endl;
     cout << "Windows size: " << arg.w << endl;
     cout << "Stop word modulus: " << arg.p << endl;
-    if(arg.n > 0) { cout << "Windows number: " << arg.n << endl; }
+    cout << "Maximum window number allowed: " << arg.n << endl;
     
     if(arg.w<5){ primes = primelw; }
     // measure elapsed wall clock time
@@ -575,13 +585,12 @@ int main(int argc, char** argv) {
     
     // ------------ parse input fasta file
     try{
-        if(arg.th<=1){
-            if(arg.n==0){
+        if(arg.th <= 1){
+            if(arg.n > 0){
                 uint16_t nw = compute_windows_n(arg);
                 arg.n = nw; cout << "no. windows needed: " << nw << endl;
             }
-            cout << "Removed sequences: ";
-            for(int i=0;i<to_remove.size();i++){ cout << to_remove[i] << " "; } cout << endl;
+            cout << to_remove.size() << " sequences filtered" << endl;
             totChar = parse_fasta_reads(arg,wordFreq);      
         }
         else
@@ -590,10 +599,9 @@ int main(int argc, char** argv) {
             cerr << "Sorry, this is the no-threads executable and you requested " << arg.th << " threads\n";
             exit(1);
             #else
-            if(arg.n==0){
+            if(arg.n > 0){
                 Res res = parallel_parse_fasta(arg, wordFreq, 0);
                 arg.n = res.nw;
-                cout << "no. windows needed: " << res.nw << endl;
             }
             Res res = parallel_parse_fasta(arg, wordFreq, 1);
             totChar = res.tot_char; nt = res.us_th;
