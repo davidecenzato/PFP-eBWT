@@ -236,12 +236,12 @@ static void save_update_word(string& w, unsigned int minsize, map<uint64_t,word_
 uint64_t kr_hash(string s) {
     uint64_t hash = 0;
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
-    //const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
+    const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
     //const uint64_t prime = primesh[arg.i];
     for(size_t k=0;k<s.size();k++) {
       int c = (unsigned char) s[k];
       assert(c>=0 && c< 256);
-      hash = (256*hash + c) % prime_kr;    //  add char k
+      hash = (256*hash + c) % prime;    //  add char k
     }
     return hash;
 }

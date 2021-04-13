@@ -176,6 +176,7 @@ void *parallel_windows_n(void *dx)
       c = f.get();
       current_pos++;
   }
+  beginning = current_pos;
   // parse the sequence
   while( current_pos < d->true_end ) {
       c = f.get(); c = std::toupper(c);
