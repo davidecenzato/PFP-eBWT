@@ -364,7 +364,7 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
             }
             else assert(i>0); // the first thread must produce some words 
         }
-        to_remove_mt.clear();
+        //to_remove_mt.clear();
     }
     fclose(fp);
     if(fclose(filtered)!=0) die("Error closing filtered file");
