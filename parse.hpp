@@ -7,7 +7,6 @@
 #ifndef PARSE_HPP
 #define PARSE_HPP
 
-
 #include <sys/stat.h>
 #include <algorithm>
 
@@ -133,11 +132,11 @@ public:
     
     void checkParseSize(){
         std::cout << "Checking parse size." << std::endl;
-        if(p.size() > 0x7FFFFFFE) {
-            std::cerr << "Input containing more than 2^32 words" << std::endl;
-            std::cout << 0x7FFFFFFE << std::endl;
+        if(p.size() > (2^32) - 1) {
+            std::cerr << "Input containing more than 2^32 - 1 words" << std::endl;
+            std::cout << (2^32) - 1 << std::endl;
             std::cout << p.size() << std::endl;
-            die("Input containing more than 2^31-2 phrases!\n");
+            die("Input containing more than 2^31-1 phrases!\n");
             die("Please use 64 bit version\n");
             exit(1); }
     }

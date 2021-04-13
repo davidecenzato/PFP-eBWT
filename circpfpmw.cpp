@@ -43,6 +43,10 @@ vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 100000000
                          1000000289, 1000000297, 1000000321, 1000000363, 1000000409, 1000000427, 1000000531, 1000000613,
                          1000000829, 1000000787, 1000001011, 1000001053, 1000001099, 1000001137, 1000001161, 1000001203};
 
+vector<uint64_t> primesh{27162335252586509, 28162335252586519, 29162335252586561, 30162335252586539};
+uint64_t prime_kr;
+
+// vectors containing sequences to be filtered
 vector<uint64_t> to_remove;
 vector<vector<uint64_t>> to_remove_mt;
 
@@ -52,7 +56,8 @@ struct Args {
    size_t w = 10;         // sliding window size and its default
    size_t p = 100;        // modulus for establishing stopping w-tuples
    uint16_t n = 3;        // maximum number of KR-windows
-   int th=0;              // number of helper threads
+   int th = 0;            // number of helper threads
+   int i = 0;             // prime index for phrase KR-hashes 
    int verbose=0;         // verbosity level
    bool c = 0;            // check sequences periodicity 
 };
@@ -86,7 +91,7 @@ void parseArgs( int argc, char** argv, Args& arg ) {
     puts("");
   
     string sarg;
-    while ((c = getopt( argc, argv, "p:w:ht:vcn:") ) != -1) {
+    while ((c = getopt( argc, argv, "p:w:ht:i:vcn:") ) != -1) {
        switch(c) {
          case 'w':
          sarg.assign( optarg );
@@ -100,6 +105,9 @@ void parseArgs( int argc, char** argv, Args& arg ) {
          case 't':
          sarg.assign( optarg );
          arg.th = stoi( sarg ); break;
+         case 'i':
+         sarg.assign( optarg );
+         arg.i = stoi( sarg ); break;
          case 'v':
             arg.verbose++; break;
          case 'c':
@@ -128,6 +136,10 @@ void parseArgs( int argc, char** argv, Args& arg ) {
       cout << "Modulus must be at leas 10\n";
       exit(1);
     }
+    if(arg.i<0 || arg.i>3) {
+      cout << "Select an option between 0 and 3\n";
+      exit(1);
+    }
     #ifdef NOTHREADS
     if(arg.th!=0) {
       cout << "The NT version cannot use threads\n";
@@ -154,7 +166,7 @@ struct KR_window {
   KR_window(int w, uint64_t prime_): wsize(w), prime(prime_) {
     asize = 256;
     asize_pot = 1;
-    //  asize_pot = (asize_pot*asize)% prime; // ugly linear-time power algorithm
+    // ugly linear-time power algorithm
     for(int i=1;i<wsize;i++){
         asize_pot = (asize_pot*asize)% prime;}
     // alloc and clear window
@@ -224,11 +236,12 @@ static void save_update_word(string& w, unsigned int minsize, map<uint64_t,word_
 uint64_t kr_hash(string s) {
     uint64_t hash = 0;
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
-    const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
+    //const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
+    //const uint64_t prime = primesh[arg.i];
     for(size_t k=0;k<s.size();k++) {
       int c = (unsigned char) s[k];
       assert(c>=0 && c< 256);
-      hash = (256*hash + c) % prime;    //  add char k
+      hash = (256*hash + c) % prime_kr;    //  add char k
     }
     return hash;
 }
@@ -266,6 +279,7 @@ static void save_update_word(string& w, unsigned int minsize,map<uint64_t,word_s
       if(freq[hash].str != w) {
         cerr << "Emergency exit! Hash collision for strings:\n";
         cerr << freq[hash].str << "\n  vs\n" <<  w << endl;
+        cerr << "Please select a different prime using -i option.";
         exit(1);
       }
   }
@@ -301,6 +315,7 @@ uint16_t compute_windows_n(Args& arg){
             word.append(1, c);
             for(uint16_t j = 0; j<nw; ++j){
                 uint64_t hash = windows[j].addchar(c);
+                //if(nseq == 4954160) cout << "j " << j << " hash " << hash << endl;
                 if(hash%arg.p==0 && windows[j].current == arg.w) { trg_f=1; break; }
             }
             if(trg_f){ break; }
@@ -310,6 +325,7 @@ uint16_t compute_windows_n(Args& arg){
                 c = word[i];
                 for(uint16_t j = 0; j<nw; ++j){
                     uint64_t hash = windows[j].addchar(c);
+                    //if(nseq == 4954160) cout << "j " << j << " hash " << hash << endl;
                     if (hash%arg.p==0 && windows[j].current == arg.w){ trg_f=1; break; }
                 }
                 if(trg_f) { break; }
@@ -323,7 +339,7 @@ uint16_t compute_windows_n(Args& arg){
                 trg_f = 1;  to_remove.push_back(nseq); rem = 1;
             }else{
                 if(cw+1 == primes.size()){
-                    trg_f = 1;  to_remove.push_back(nseq); rem = 1; 
+                    trg_f = 1;  to_remove.push_back(nseq); rem = 1;
                     windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; --nw; 
                 }
             }
@@ -462,6 +478,7 @@ uint64_t parse_fasta_reads(Args& arg, map<uint64_t,word_stats>& wordFreq)
     if(fclose(offset_file)!=0) die("Error closing offset file");
     if(fclose(filtered)!=0) die("Error closing filtered file");
 
+    to_remove.clear();
     return total_char;
 }
 
@@ -517,7 +534,6 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, int th)
   uint64_t start = 0, len = 0;
   string separator(arg.w,Dollar);
   uint64_t hash_sep = kr_hash(separator);
-  //map <p,uint32_t> startFreq;
   set<p> startChr;
 
   while(true) {
@@ -576,6 +592,8 @@ int main(int argc, char** argv) {
     cout << "Maximum window number allowed: " << arg.n << endl;
     
     if(arg.w<5){ primes = primelw; }
+    prime_kr = primesh[arg.i];
+    
     // measure elapsed wall clock time
     time_t start_main = time(NULL);
     time_t start_wc = start_main;
@@ -612,6 +630,7 @@ int main(int argc, char** argv) {
     cout << "Out of memory (parsing phase)... emergency exit\n";
     die("bad alloc exception");
     }
+    
     
     uint64_t totDWord = wordFreq.size();
     cout << "Total input symbols: " << totChar << endl;

@@ -20,7 +20,8 @@ def main():
     parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
     parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
-    parser.add_argument('-n', help='number KR-windows (def. None)', default=0, type=int)
+    parser.add_argument('-n', help='number KR-windows (def. None)', default=1, type=int)
+    parser.add_argument('-i', help='number KR-windows (def. None)', default=0, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
     parser.add_argument('-v',  help='verbose',action='store_true')
     parser.add_argument('--reads', help='process input ad a read set (def. False)', action='store_true')
@@ -58,6 +59,7 @@ def main():
                         wsize=args.wsize, modulus = args.mod, file=args.input)
 
 
+        if (args.i > 0): command += " -i " + str(args.i)
         if args.v: command += " -v"
         if args.period: command += " -c"
 
@@ -101,7 +103,7 @@ def main():
         print("Total construction time: {0:.4f}".format(time.time()-start0))
         if args.keep:
             print("Deleting auxiliary files")
-            command = "rm -f {file}.eparse_old {file}.eparse {file}.edict {file}.offset_old {file}.offset {file}.eocc {file}.fchar {file}.start".format(file=args.input)
+            command = "rm -f {file}.eparse_old {file}.offset_old {file}.eparse {file}.edict {file}.offset {file}.eocc {file}.fchar {file}.start".format(file=args.input)
             if(execute_command(command,logfile,logfile_name)!=True):
                 return
             for i in range(args.t):
