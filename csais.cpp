@@ -15,7 +15,13 @@
 using namespace std;
 using namespace sdsl;
 
-const int EMPTY=0xffffffff;
+#if P64
+  const uint_s EMPTY=0xffffffffffffffff; 
+#else
+  const uint_s EMPTY=0xffffffff; 
+#endif
+
+//const int EMPTY=0xffffffff;
 unsigned char mask[]={0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 #define tget(i) ( (t[(i)/8]&mask[(i)%8]) ? 1 : 0 )
 #define tset(i, b) t[(i)/8]=(b) ? (mask[(i)%8]|t[(i)/8]) : ((~mask[(i)%8])&t[(i)/8])
@@ -39,7 +45,7 @@ void induceSAl(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, uint_s *l_b
     getBuckets(s, bkt, n, K, cs, false); // find heads of buckets
     
     for(i=0;i<star.size();i++){
-      j=star[i]; SA[(l_bkt[chr(j)])+bkt[chr(j)]++]=j;
+      j=star[i]; SA[(l_bkt[chr(j)]++)+bkt[chr(j)]]=j;
     }
 
     for(i=0; i<n; i++){
@@ -124,8 +130,8 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
           // Classify the type of each character
           // Count the number of L types
           uint_s pos=fm-1, prev=fm;
-          bool type = (chr(pos)<chr(prev))?1:0;
-          tset(pos, type); if(type==0) l_bkt[chr(pos)]++;
+          bool type = (chr(pos)<chr(prev));
+          tset(pos, type); if(!type) l_bkt[chr(pos)]++;
           while(pos != fm){
               if(pos-sb > 0){ pos--; }
               else {pos = eb;}
@@ -133,8 +139,8 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
               else {prev = eb;}
               
               type=(chr(pos)<chr(prev) || (chr(pos)==chr(prev) && tget(prev)==1));
-              if(type==0){l_bkt[chr(pos)]++;}
-              tset(pos,type?1:0);
+              if(!type){l_bkt[chr(pos)]++;}
+              tset(pos,type);
           }
         }
       }
