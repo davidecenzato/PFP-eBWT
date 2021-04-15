@@ -70,6 +70,9 @@ target_compile_options(circpfprNT.x PUBLIC "-DNOTHREADS")
 add_executable(bebwtNT.x ebwt.cpp utils.c csais.cpp)
 target_link_libraries(bebwtNT.x malloc_count dl z gsacak sdsl  divsufsort divsufsort64)
 
+add_executable(invertNT.x invertebwt.cpp common.hpp)
+target_link_libraries(invertNT.x sdsl divsufsort divsufsort64)
+
 add_executable(bebwtNT64.x ebwt.cpp utils.c csais.cpp)
 target_link_libraries(bebwtNT64.x malloc_count dl z gsacak64 sdsl  divsufsort divsufsort64)
 target_compile_options(bebwtNT64.x PUBLIC "-DM64")

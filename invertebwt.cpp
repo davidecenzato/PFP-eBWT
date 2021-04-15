@@ -14,31 +14,13 @@
 #include <sdsl/wavelet_trees.hpp>
 #include <algorithm>
 
+#include "common.hpp"
+
 using namespace std;
-
-template<typename T>
-void read_file(const char *filename, std::vector<T>& ptr){
-    struct stat filestat;
-    FILE* fd;
-
-    if ((fd = fopen(filename, "r")) == nullptr) {cerr << "open() file " + string(filename) + " failed" << endl;}
-
-    int fn = fileno(fd);
-    if (fstat(fn, &filestat) < 0) {cerr << "stat() file " + string(filename) + " failed" << endl;}
-
-    if(filestat.st_size % sizeof(T) != 0) {cerr << "invalid file " + string(filename) << endl;}
-
-    size_t length = filestat.st_size / sizeof(T);
-    ptr.resize(length);
-
-    if ((fread(&ptr[0], sizeof(T), length, fd)) != length) {cerr << "fread() file " + string(filename) + " failed" << endl;}
-
-    fclose(fd);
-}
 
 void inverteBWT(std::vector<uint8_t> EBWT, std::vector<uint64_t> ST_P, string I, int alph_size){
     // Function that inverse the eBWT of a int string using sdsl wavelet trees
-    string wt_filename = I + std::string(".eBWT");
+    string wt_filename = I + std::string(".ebwt");
     cout << "Building the Wavelet tree of the eBWT." << endl;
     sdsl::wt_blcd<> wt; sdsl::construct(wt,wt_filename,1);
     vector<uint32_t> C(alph_size+1,0); vector<uint32_t> bkt(alph_size,0);
@@ -48,25 +30,21 @@ void inverteBWT(std::vector<uint8_t> EBWT, std::vector<uint64_t> ST_P, string I,
     
     string tmp_filename = I + std::string(".rfasta");
     FILE* fp = fopen(tmp_filename.c_str(), "w+");
-    //for(int i=ST_P.size()-1;i>-1;i--){
+
     cout << "Inverting " << ST_P.size() << " sequences." << endl;
-    for(int i=0;i<ST_P.size();i++){
-        cout << "Sequence i " << i << endl;
-        //int newline = 60;
+    for(size_t i=0;i<ST_P.size();++i){
         std::vector<uint8_t> RP;  
         int index = ST_P[i]; 
         uint8_t p = EBWT[index]; 
-        RP.push_back(p); //newline--;
+        RP.push_back(p);
         int starting = index;
         index = C[p]+wt.rank(index,p);
         while(index != starting){
             p = EBWT[index];
-            RP.push_back(p); //newline--;
+            RP.push_back(p);
             index = C[p]+wt.rank(index,p);
-            //if(newline==0){RP.push_back('\n');newline=60;}
         }
         // write the sequence in the correct order
-        //cout << "i " << i << endl;
         reverse(RP.begin(),RP.end()); RP.push_back('\n');
         if((fwrite(&RP[0], sizeof(uint8_t), RP.size(), fp))!=RP.size()) {cerr << "fwrite failed" << endl;}
     }
@@ -91,17 +69,13 @@ int main(int argc, char *argv[])
     printf(" %s",argv[i]);
   puts("");
   
-  string tmp_filename = argv[1] + string(".eBWT");
+  string tmp_filename = argv[1] + string(".ebwt");
   read_file(tmp_filename.c_str(), eBWT);
   
   tmp_filename = argv[1] + std::string(".I");
   read_file(tmp_filename.c_str(), I);
   
-  for(int i=0;i<I.size();i++){cout << I[i] << " ";}
-  cout << endl;
-  
   inverteBWT(eBWT,I,argv[1],256);
-  
   
   return 0;
 }

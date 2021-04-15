@@ -7,12 +7,13 @@ Tool to build the EBWT for higly repetive files.
 """
 
 dirname = os.path.dirname(os.path.abspath(__file__))
-parse_exe       =  os.path.join(dirname, "circpfp.x")
-parseNT_exe     =  os.path.join(dirname, "circpfpNT.x")
-parseReads_exe       =  os.path.join(dirname, "circpfpr.x")
-parseReadsNT_exe     =  os.path.join(dirname, "circpfprNT.x")
+parse_exe        =  os.path.join(dirname, "circpfp.x")
+parseNT_exe      =  os.path.join(dirname, "circpfpNT.x")
+parseReads_exe   =  os.path.join(dirname, "circpfpr.x")
+parseReadsNT_exe =  os.path.join(dirname, "circpfprNT.x")
 bebwtNT_exe      =  os.path.join(dirname, "bebwtNT.x")
-bebwtNT64_exe      =  os.path.join(dirname, "bebwtNT64.x")
+bebwtNT64_exe    =  os.path.join(dirname, "bebwtNT64.x")
+invertNT_exe     =  os.path.join(dirname, "invertNT.x")
 
 def main():
     parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
@@ -20,12 +21,13 @@ def main():
     parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
     parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
-    parser.add_argument('-n', help='number KR-windows (def. None)', default=1, type=int)
-    parser.add_argument('-i', help='number KR-windows (def. None)', default=0, type=int)
+    parser.add_argument('-n', help='max number of KR-windows (def. 1)', default=1, type=int)
+    parser.add_argument('-i', help='prime index (def. 0)', default=0, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
     parser.add_argument('-v',  help='verbose',action='store_true')
     parser.add_argument('--reads', help='process input ad a read set (def. False)', action='store_true')
     parser.add_argument('--period', help='remove periodic sequences (def. False)', action='store_true')
+    parser.add_argument('--invert', help='invert the eBWT (def. False)', action='store_true')
     parser.add_argument('--keep',  help='keep auxiliary files (debug only)',action='store_false')
     parser.add_argument('--parsing',  help='stop after the parsing phase (debug only)',action='store_true')
     args = parser.parse_args()
@@ -103,14 +105,18 @@ def main():
         print("Total construction time: {0:.4f}".format(time.time()-start0))
         if args.keep:
             print("Deleting auxiliary files")
-            command = "rm -f {file}.eparse_old {file}.offset_old {file}.eparse {file}.edict {file}.offset {file}.eocc {file}.fchar {file}.start".format(file=args.input)
+            command = "rm -f {file}.eparse_old {file}.offset_old {file}.offset {file}.eocc {file}.fchar {file}.start".format(file=args.input)
             if(execute_command(command,logfile,logfile_name)!=True):
                 return
             for i in range(args.t):
                 command = "rm -f {file}.{i}.eparse_old {file}.{i}.offset_old ".format(file=args.input, i=i)
                 if(execute_command(command,logfile,logfile_name)!=True):
                     return
-
+        if args.invert:
+            print("Inverting the eBWT")
+            command = "{exe} {file}".format(exe = os.path.join(args.bigbwt_dir,invertNT_exe), file=args.input)
+            if(execute_command(command,logfile,logfile_name)!=True):
+                return
 
 # execute command: return True is everything OK, False otherwise
 def execute_command(command,logfile,logfile_name,env=None):
