@@ -361,6 +361,9 @@ uint16_t compute_windows_n(Args& arg){
         for(uint16_t j=0;j<nw;j++){ windows[j].reset(); }
     }
     
+    kseq_destroy(seq);
+    gzclose(fp);
+
     for(uint16_t j=0;j<nw;j++){ windows[j].delete_window(); }
     uint16_t cnt = 0; 
     for(uint16_t i = 0; i < used.size(); i++){if(used[i]){primes[cnt]=primes[i]; ++cnt;}}

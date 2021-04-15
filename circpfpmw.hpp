@@ -79,24 +79,24 @@ void *cyclic_mt_parse_fasta(void *dx)
   bool first_trigger = 0;
   
   // skip the header
-  uint64_t current_pos = d->true_start; uint64_t i=0;
+  uint64_t current_pos = d->true_start; uint64_t sp=0; size_t i,j;
   // step when we find the correct starting point
   skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, f, *d);
   // parse the sequence
   while( current_pos < d->true_end ) {
       c = f.get();
-      current_pos++;
+      ++current_pos;
       c = std::toupper(c);
       if(c > 64){ // A is 65 in ascii table. 
-          if(c<= Dollar || c> 90) { die("Invalid char found in input file. Exiting..."); }
+          if(c<= 64 || c> 90) { die("Invalid char found in input file. Exiting..."); }
           word.append(1, c);
           if(first_trigger == 0){ fword.append(1, c); }
           bool wind_f = 0;
-          for(uint16_t j=0;j<arg->n;j++){
+          for(j=0; j<arg->n; ++j){
               uint64_t hash = windows[j].addchar(c);
               if (hash%arg->p==0 && !wind_f && windows[j].current == arg->w){
                   if(first_trigger==0){
-                      first_trigger = 1, start_char = i;
+                      first_trigger = 1, start_char = sp;
                       if(fwrite(&start_char,sizeof(start_char),1,d->o)!=1) die("offset write error");
                       word.erase(0,word.size() - arg->w); wind_f=1;
                   }
@@ -106,16 +106,17 @@ void *cyclic_mt_parse_fasta(void *dx)
                     }
                 }
             }
+            ++sp;
       }
       else{ 
           if(c == '>' || current_pos >= d->true_end-1){
             d->parsed += windows[0].tot_char;
-            for (size_t i = 0; i < arg->w - 1; i++) {
+            for (i = 0; i < arg->w - 1; ++i) {
                 c = fword[i];
                 word.append(1, c);
                 if(first_trigger == 0){fword.append(1, c);}
                 bool wind_f = 0;
-                for(uint16_t j=0;j<arg->n;j++){
+                for(j=0; j<arg->n; ++j){
                     uint64_t hash = windows[j].addchar(c);
                     if(hash%arg->p==0 && !wind_f){
                         if(first_trigger==0){
@@ -132,8 +133,8 @@ void *cyclic_mt_parse_fasta(void *dx)
             final_word = word + fword.erase(0,arg->w - 1);
             save_update_word(final_word,arg->w,*wordFreq,d->parse,1);
             d->words++; 
-            for(int j=0;j<arg->n;j++){ windows[j].reset(); }
-            first_trigger = 0; start_char=0; i=0;
+            for(j=0; j<arg->n; ++j){ windows[j].reset(); }
+            first_trigger = 0; start_char=0; sp=0;
             word = fword = final_word = ""; ++nseq;
             
             skip_seq(nseq, current_pos, next_tr, tr_i, filt_seq, c, f, *d);
@@ -141,7 +142,7 @@ void *cyclic_mt_parse_fasta(void *dx)
       }
     }
   
-  for(int j=0;j<arg->n;j++){ windows[j].delete_window(); }
+  for(j=0; j<arg->n; ++j){ windows[j].delete_window(); }
   d->filtered = filt_seq;
   f.close(); 
   return NULL;
@@ -170,22 +171,22 @@ void *parallel_windows_n(void *dx)
   vector<uint64_t> to_remove; uint16_t cw = 0;
   
   // skip the header
-  uint64_t current_pos = d->true_start; uint64_t i=0;
+  uint64_t current_pos = d->true_start; uint64_t i=0,j=0;
   // step when we find the newline
   while((c != '\n')){
       c = f.get();
-      current_pos++;
+      ++current_pos;
   }
   beginning = current_pos;
   // parse the sequence
   while( current_pos < d->true_end ) {
       c = f.get(); c = std::toupper(c);
-      current_pos++;
+      ++current_pos;
       if(c > 64){ // A is 65 in ascii table. 
-          if(c<= Dollar || c> 90) die("Invalid char found in input file. Exiting...");
+          if(c<= 64 || c> 90) die("Invalid char found in input file. Exiting...");
           word.append(1, c);
           if(!trg_f){
-            for(uint16_t j=0;j<nw;j++){
+            for(j=0; j<nw; ++j){
                 uint64_t hash = windows[j].addchar(c);
                 if (hash%arg->p==0 && windows[j].current == arg->w){ trg_f=1; break; }
               }
@@ -194,10 +195,10 @@ void *parallel_windows_n(void *dx)
       else{ 
         if(c == '>' || current_pos >= d->true_end-1){
             if(!trg_f){
-                for (size_t i = 0; i < arg->w - 1; i++) {
+                for (i = 0; i < arg->w - 1; ++i) {
                     c = word[i];
                     bool wind_f = 0;
-                    for(uint16_t j=0;j<nw;j++){
+                    for(j=0; j<nw; ++j){
                         uint64_t hash = windows[j].addchar(c);
                         if(hash%arg->p==0 && !wind_f){ trg_f=1; break; }
                     }
@@ -228,7 +229,7 @@ void *parallel_windows_n(void *dx)
             if(trg_f){
                 new_w = 0;  cw = 0; ++nseq;
                 while(  ((c = f.get()) != EOF) && current_pos < d->true_end ){
-                    current_pos++;
+                    ++current_pos;
                     if(c=='\n'){break;}
                 }
                 beginning = current_pos; trg_f = 0;
@@ -238,14 +239,15 @@ void *parallel_windows_n(void *dx)
                 if(new_w){ windows[windows.size()-1].delete_window(); windows.pop_back(); used[cw] = 0; ++cw;}
                 else { new_w = 1; ++nw; }
                 for(uint16_t j=cw; j<arg->n; j++){ if(!used[j]){windows.push_back(KR_window(arg->w,primes[j])); cw=j; used[j]=1; break;}}
+                if(j == arg->n){ --nw; }
             }
             
-            for(int j=0;j<nw;j++){ windows[j].reset(); }
+            for(j=0; j<nw; ++j){ windows[j].reset(); }
         }
      }
   }
   
-  for(int j=0;j<nw;j++){ windows[j].delete_window(); }
+  for(j=0; j<nw; ++j){ windows[j].delete_window(); }
   d->nw = nw;
   d->used = used;
   d->to_rmv = to_remove;
@@ -309,8 +311,10 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
             td[nt-1].parsed = 0;
             td[nt-1].th_id = nt-1;
             assert(td[nt-1].true_end <=size);
+            if(mode){
             td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
             td[nt-1].o = open_aux_file_num(arg.inputFileName.c_str(),EXTOFF0,nt-1,"wb");
+            }
             if(mode==1){xpthread_create(&t[nt-1],NULL,&cyclic_mt_parse_fasta,&td[nt-1],__LINE__,__FILE__);}
             else{xpthread_create(&t[nt-1],NULL,&parallel_windows_n,&td[nt-1],__LINE__,__FILE__);}
             nt++;
@@ -326,8 +330,10 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     td[nt-1].parsed = 0;
     td[nt-1].th_id = nt-1;
     assert(td[nt-1].true_end <=size);
+    if(mode){
     td[nt-1].parse = open_aux_file_num(arg.inputFileName.c_str(),EXTPARS0,nt-1,"wb");
     td[nt-1].o = open_aux_file_num(arg.inputFileName.c_str(),EXTOFF0,nt-1,"wb");
+    }
     if(mode==1){xpthread_create(&t[nt-1],NULL,&cyclic_mt_parse_fasta,&td[nt-1],__LINE__,__FILE__);}
     else{xpthread_create(&t[nt-1],NULL,&parallel_windows_n,&td[nt-1],__LINE__,__FILE__);}
     
