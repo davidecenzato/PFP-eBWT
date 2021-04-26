@@ -7,13 +7,15 @@ Tool to build the EBWT for higly repetive files.
 """
 
 dirname = os.path.dirname(os.path.abspath(__file__))
-parse_exe        =  os.path.join(dirname, "circpfp.x")
-parseNT_exe      =  os.path.join(dirname, "circpfpNT.x")
-parseReads_exe   =  os.path.join(dirname, "circpfpr.x")
-parseReadsNT_exe =  os.path.join(dirname, "circpfprNT.x")
-bebwtNT_exe      =  os.path.join(dirname, "bebwtNT.x")
-bebwtNT64_exe    =  os.path.join(dirname, "bebwtNT64.x")
-invertNT_exe     =  os.path.join(dirname, "invertNT.x")
+parse_exe         =  os.path.join(dirname, "circpfp.x")
+parseNT_exe       =  os.path.join(dirname, "circpfpNT.x")
+parseReads_exe    =  os.path.join(dirname, "circpfpr.x")
+parseReadsNT_exe  =  os.path.join(dirname, "circpfprNT.x")
+parseReadsD_exe   =  os.path.join(dirname, "circpfpd.x")
+parseReadsDNT_exe =  os.path.join(dirname, "circpfpdNT.x")
+bebwtNT_exe       =  os.path.join(dirname, "bebwtNT.x")
+bebwtNT64_exe     =  os.path.join(dirname, "bebwtNT64.x")
+invertNT_exe      =  os.path.join(dirname, "invertNT.x")
 
 def main():
     parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
@@ -21,10 +23,11 @@ def main():
     parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
     parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
-    parser.add_argument('-n', help='max number of KR-windows (def. 1)', default=1, type=int)
-    parser.add_argument('-i', help='prime index (def. 0)', default=0, type=int)
+    parser.add_argument('-n', help='number KR-windows (def. None)', default=1, type=int)
+    #parser.add_argument('-i', help='number KR-windows (def. None)', default=0, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
     parser.add_argument('-v',  help='verbose',action='store_true')
+    parser.add_argument('-d',  help='verbose',action='store_true')
     parser.add_argument('--reads', help='process input ad a read set (def. False)', action='store_true')
     parser.add_argument('--period', help='remove periodic sequences (def. False)', action='store_true')
     parser.add_argument('--invert', help='invert the eBWT (def. False)', action='store_true')
@@ -42,14 +45,24 @@ def main():
         start0 = start = time.time()
 
         if args.reads:
-            if args.t>0:
-                command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
-                        exe = os.path.join(args.bigbwt_dir,parseReads_exe),
-                        wsize=args.wsize, modulus = args.mod, th=args.t, wnumb=args.n, file=args.input)
+            if args.d:
+                if args.t>0:
+                    command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
+                            exe = os.path.join(args.bigbwt_dir,parseReadsD_exe),
+                            wsize=args.wsize, modulus = args.mod, th=args.t, wnumb=args.n, file=args.input)
+                else:
+                    command = "{exe} {file} -w {wsize} -p {modulus} -n {wnumb}".format(
+                            exe = os.path.join(args.bigbwt_dir,parseReadsDNT_exe),
+                            wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
             else:
-                command = "{exe} {file} -w {wsize} -p {modulus} -n {wnumb}".format(
-                        exe = os.path.join(args.bigbwt_dir,parseReadsNT_exe),
-                        wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
+                if args.t>0:
+                    command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
+                            exe = os.path.join(args.bigbwt_dir,parseReads_exe),
+                            wsize=args.wsize, modulus = args.mod, th=args.t, wnumb=args.n, file=args.input)
+                else:
+                    command = "{exe} {file} -w {wsize} -p {modulus} -n {wnumb}".format(
+                            exe = os.path.join(args.bigbwt_dir,parseReadsNT_exe),
+                            wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
         else:
             if args.t>0:
                 command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
@@ -61,7 +74,7 @@ def main():
                         wsize=args.wsize, modulus = args.mod, file=args.input)
 
 
-        if (args.i > 0): command += " -i " + str(args.i)
+        #if (args.i > 0): command += " -i " + str(args.i)
         if args.v: command += " -v"
         if args.period: command += " -c"
 
@@ -87,7 +100,7 @@ def main():
         print("Parse contains " + str(parse_size) + " words.")
         dict_size = os.path.getsize(args.input+".edict")
         print("Dictionary contains " + str(dict_size) + " characters.")
-        if(parse_size >=  (2**32-1) or dict_size >=  (2**31-1)):
+        if(parse_size >=  (2**32-1) or dict_size >=  (2**32-1)):
         #if(True):
             print("running in 64 bit mode")
             command = "{exe} {file} -w {wsize}".format(

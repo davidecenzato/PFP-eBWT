@@ -10,9 +10,9 @@ LDLIBSOPTIONS=-L sdsl-lite/SDSL_INSTALL_PATH/lib
 INCLUDEOPTIONS=-I sdsl-lite/SDSL_INSTALL_PATH/include
 
 # main executables 
-EXECS=circpfp.x circpfpr.x
+EXECS=circpfp.x circpfpr.x circpfpd.x
 # executables not using threads (and therefore not needing the thread library)
-EXECS_NT=circpfpNT.x circpfprNT.x  bebwtNT.x bebwtNT64.x
+EXECS_NT=circpfpNT.x circpfprNT.x circpfpdNT.x bebwtNT.x bebwtNT64.x invertNT.x
 #pfebwtNT.x
 
 # targets not producing a file declared phony
@@ -32,8 +32,11 @@ csais.o: csais.cpp csais.h
 csais64.o: csais.cpp csais.h
 	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64 -DP64
 
-invert.o: invertebwt.cpp 
-	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64 -DM64
+#invertNT.o: invertebwt.cpp common.hpp
+#	$(CC) $(CFLAGS) -c -o $@ $< -ldsl -ldivsufsort -ldivsufsort64
+
+invertNT.x: invertebwt.cpp common.hpp
+	$(CXX) $(CXX_FLAGS) -o $@ $^ -lsdsl -ldivsufsort -ldivsufsort64
 
 circpfp.x: circpfp.cpp circpfp.hpp malloc_count.o utils.o xerrors.o 
 	$(CXX) $(CXX_FLAGS) -o $@ circpfp.cpp malloc_count.o utils.o xerrors.o -ldl -lz -pthread
@@ -45,6 +48,12 @@ circpfpr.x: circpfpmw.cpp circpfpmw.hpp malloc_count.o utils.o xerrors.o
 	$(CXX) $(CXX_FLAGS) -o $@ circpfpmw.cpp malloc_count.o utils.o xerrors.o -ldl -lz -pthread
 
 circpfprNT.x: circpfpmw.cpp malloc_count.o utils.o 
+	$(CXX) $(CXX_FLAGS) -o $@ $^ -lz -ldl -DNOTHREADS
+
+circpfpd.x: circpfpd.cpp circpfpd.hpp malloc_count.o utils.o xerrors.o 
+	$(CXX) $(CXX_FLAGS) -o $@ circpfpd.cpp malloc_count.o utils.o xerrors.o -ldl -lz -pthread
+
+circpfpdNT.x: circpfpd.cpp malloc_count.o utils.o 
 	$(CXX) $(CXX_FLAGS) -o $@ $^ -lz -ldl -DNOTHREADS
 
 bebwtNT.x: ebwt.cpp parse.hpp dictionary.hpp pfp.hpp common.hpp malloc_count.o utils.o gsa/gsacak.o csais.o

@@ -38,8 +38,8 @@ void getBuckets(uint_s *s, uint_s *bkt, size_t n, size_t K, size_t cs, bool end)
 }
 
 // induce L suffixes
-void induceSAl(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, uint_s *l_bkt, bit_vector::rank_1_type& r_s,
-               bit_vector::select_1_type& s_s, bit_vector& b_s, size_t n, size_t K, size_t cs, int level, vector<uint_s>& star) { 
+void induceSAl(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, uint_s *l_bkt, sd_vector<>::rank_1_type& r_s,
+               sd_vector<>::select_1_type& s_s, sd_vector<>& b_s, size_t n, size_t K, size_t cs, int level, vector<uint_s>& star) { 
     
     size_t i, j, rank;
     getBuckets(s, bkt, n, K, cs, false); // find heads of buckets
@@ -62,8 +62,8 @@ void induceSAl(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, uint_s *l_b
 }
 
 // induce S suffixes
-void induceSAs(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, bit_vector::rank_1_type& r_s,
-               bit_vector::select_1_type& s_s, bit_vector& b_s, size_t n, size_t K, size_t cs, int level) { 
+void induceSAs(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, sd_vector<>::rank_1_type& r_s,
+               sd_vector<>::select_1_type& s_s, sd_vector<>& b_s, size_t n, size_t K, size_t cs, int level) { 
     
   size_t i, j, rank;
   getBuckets(s, bkt, n, K, cs, true); // find ends of buckets
@@ -94,12 +94,12 @@ void induceSAs(unsigned char *t, uint_s *SA, uint_s *s, uint_s *bkt, bit_vector:
  *  @param b_s   starting positions bit vector
  *  @return      None
  */
-void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_vector &b_s) {
+void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, sd_vector<> &b_s) {
   size_t i, j, nseq, rank;
   size_t sb, eb, fm, len; // maybe uint_s
-  bit_vector::rank_1_type r_s = bit_vector::rank_1_type(&b_s);
-  bit_vector::select_1_type s_s = bit_vector::select_1_type(&b_s);
-  
+  sd_vector<>::rank_1_type r_s = sd_vector<>::rank_1_type(&b_s);
+  sd_vector<>::select_1_type s_s = sd_vector<>::select_1_type(&b_s);
+
   nseq = r_s(n);
   unsigned char *t=(unsigned char *)malloc(n/8+1); // LS-type array in bits
   
@@ -182,8 +182,12 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   }
   
   //create the bit vector of the new string
-  bit_vector nb_s(n1+1,0); size_t sum=0;
-  for(i=0;i<(nseq+1);i++){ sum+=sts[i]; nb_s[sum]=1;}
+  sd_vector<> nb_s; vector<size_t> onset; size_t sum=0;
+  onset.push_back(0);
+  for(size_t i=1;i<(nseq+1);++i){sum+=sts[i]; if(sts[i]>0){onset.push_back(sum);}}
+  sd_vector_builder builder(n1+1,onset.size());
+  for(auto idx: onset){builder.set(idx);}
+  nb_s = sd_vector<>(builder);
   free(sts);
   
   // Init the name array buffer
@@ -286,6 +290,7 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
   induceSAl(t, SA, s, bkt, l_bkt, r_s, s_s, b_s, n, K, cs, level, sgt); 
   induceSAs(t, SA, s, bkt, r_s, s_s, b_s, n, K, cs, level);
   
+  onset.clear();
   free(bkt); 
   free(l_bkt);
   free(t);
@@ -301,7 +306,7 @@ void cSAIS(uint_s *s, uint_s *SA, size_t n, size_t K, size_t cs, int level, bit_
  * @param K alphabet size
  * @param b_s bitvector of the starting phrases of the parse
  */
-void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, bit_vector &b_s){
+void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, sd_vector<> &b_s){
     if((s == nullptr) || (SA == nullptr) || (n < 0)) {cerr << "Empty input given." << endl; exit(1);}
     cSAIS((uint_s *)s, (uint_s *)SA, n, K, sizeof(uint_p), 0, b_s);
 }

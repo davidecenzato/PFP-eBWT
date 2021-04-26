@@ -55,7 +55,7 @@ typedef uint32_t uint_p;
  * @param K alphabet size
  * @param b_s bitvector of the starting phrases of the parse
  */
-void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, sdsl::bit_vector &b_s);
+void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, sdsl::sd_vector<> &b_s);
 
 
 
