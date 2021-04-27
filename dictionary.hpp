@@ -10,8 +10,6 @@
 extern "C" {
     #include "gsa/gsacak.h"
 }
-#include <vector>
-#include <sdsl/bit_vectors.hpp>
 
 // TODO: Extend it to integer alphabets
 class dictionary{

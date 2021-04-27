@@ -31,7 +31,8 @@ void inverteBWT(std::vector<uint8_t> EBWT, std::vector<uint64_t> ST_P, string I,
     string tmp_filename = I + std::string(".rfasta");
     FILE* fp = fopen(tmp_filename.c_str(), "w+");
 
-    cout << "Inverting " << ST_P.size() << " sequences." << endl;
+    //cout << "Inverting " << ST_P.size() << " sequences." << endl;
+    size_t inverted = 0;
     for(size_t i=0;i<ST_P.size();++i){
         std::vector<uint8_t> RP;  
         int index = ST_P[i]; 
@@ -44,10 +45,12 @@ void inverteBWT(std::vector<uint8_t> EBWT, std::vector<uint64_t> ST_P, string I,
             RP.push_back(p);
             index = C[p]+wt.rank(index,p);
         }
+        ++inverted;
         // write the sequence in the correct order
         reverse(RP.begin(),RP.end()); RP.push_back('\n');
         if((fwrite(&RP[0], sizeof(uint8_t), RP.size(), fp))!=RP.size()) {cerr << "fwrite failed" << endl;}
     }
+    cout << "Sequences inverted: " << inverted << endl;
     fclose(fp);
 }
 

@@ -7,14 +7,11 @@
 #ifndef PFP_HPP
 #define PFP_HPP
 
-#include "parse.hpp"
-#include "dictionary.hpp"
+#define BWTBYTES 5
 
 #include <algorithm>
 #include <tuple>
 #include <queue>
-
-#define BWTBYTES 5
 
 class pfp{
 private:
@@ -28,6 +25,8 @@ private:
         size_t  st_pos = 0;
         bool is_starting = 0;
     } phrase_suffix_t;
+
+
     
     size_t first_occ = 0; // First occurrence of same suffix phrases in BWT_P
     size_t last_occ = 0;     // Last occurrence of same suffix phrases in BWT_P
@@ -47,7 +46,7 @@ private:
     
 public:
 
-    parse& pars;
+    pfp_parse& pars;
     dictionary& dict;
     std::string filename;
     size_t w;
@@ -78,7 +77,7 @@ public:
         if(s.is_starting){ s.st_pos=s.sn-dict.select_b_d(s.phrase); }
         else{ s.st_pos=0; }
         s.suffix_length = dict.select_b_d(dict.rank_b_d(s.sn + 1) + 1) - s.sn -1;
-        assert(!is_valid(s) || (s.phrase > 0 && s.phrase < pars.ilP.size()));
+        assert(s.phrase > 0 && s.phrase <= pars.ilP.size());
         
         if(is_valid(s)){
             s.bwt_char = dict.d[s.sn - 1];}
@@ -138,7 +137,7 @@ public:
         // lengths.back() += length; // Debug only
     }
 
-    pfp(parse &p_, dictionary &d_, std::string filename_, size_t w_, bool rle_): 
+    pfp(pfp_parse &p_, dictionary &d_, std::string filename_, size_t w_, bool rle_): 
             pars(p_),
             dict(d_),
             filename(filename_),
@@ -210,13 +209,11 @@ public:
                     //suffix not starting with a character occurring at the beginning of 
                     // a input sequence
                     if(!st_chars){
-                        
                         typedef std::pair<uint_s *, std::pair<uint_s *, uint8_t>> pq_t;
                         // using lambda to compare elements.
                         auto cmp = [](const pq_t &lhs, const pq_t &rhs) {
                             return *lhs.first > *rhs.first;
                         };
-                        
                         std::priority_queue<pq_t, std::vector<pq_t>, decltype(cmp)> pq(cmp);
                         
                         for (auto s: same_suffix){
@@ -224,11 +221,9 @@ public:
                             size_t end = pars.select_ilist(s.phrase+1);
                             pq.push({&pars.ilP[begin], {&pars.ilP[end], s.bwt_char}});
                         }
-                        
                         while(!pq.empty()){
                             auto curr_occ = pq.top();
                             pq.pop();
-                            
                             update_ebwt(curr_occ.second.second, 1, 0, 0, 0);
                             
                             // Update pq
@@ -245,19 +240,15 @@ public:
                         auto cmp2 = [](const tq_t &lhs, const tq_t &rhs) {
                             return *lhs.first > *rhs.first;
                         };
-                        
                         std::priority_queue<tq_t, std::vector<tq_t>, decltype(cmp2)> tq(cmp2);
-                        
                         for (auto s: same_suffix){
                             size_t begin = pars.select_ilist(s.phrase);
                             size_t end = pars.select_ilist(s.phrase+1);
                             tq.push({&pars.ilP[begin], std::make_tuple(&pars.ilP[end], s.bwt_char, begin, s.st_pos)});
                         }
-                        
                         while(!tq.empty()){
                             auto curr_occ = tq.top();
                             tq.pop();
-                            
                             update_ebwt(std::get<1>(curr_occ.second),1,1,std::get<2>(curr_occ.second),std::get<3>(curr_occ.second));
                             
                             // Update pq
@@ -276,7 +267,6 @@ public:
                 inc(curr);
             }      
         }
-        
         // print last run
         print_ebwt();
         // close output files

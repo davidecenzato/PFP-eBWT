@@ -74,14 +74,29 @@ add_executable(circpfpdNT.x circpfpd.cpp utils.c)
 target_link_libraries(circpfpdNT.x malloc_count z)
 target_compile_options(circpfpdNT.x PUBLIC "-DNOTHREADS")
 
-add_executable(bebwtNT.x ebwt.cpp utils.c csais.cpp)
-target_link_libraries(bebwtNT.x malloc_count dl z gsacak sdsl  divsufsort divsufsort64)
-
 add_executable(invertNT.x invertebwt.cpp common.hpp)
 target_link_libraries(invertNT.x sdsl divsufsort divsufsort64)
 
-add_executable(bebwtNT64.x ebwt.cpp utils.c csais.cpp)
-target_link_libraries(bebwtNT64.x malloc_count dl z gsacak64 sdsl  divsufsort divsufsort64)
+add_executable(parsebwtNT.x parse.cpp utils.c csais.cpp)
+target_link_libraries(parsebwtNT.x malloc_count dl sdsl divsufsort divsufsort64)
+
+add_executable(parsebwtNT64.x parse.cpp utils.c csais.cpp)
+target_link_libraries(parsebwtNT64.x malloc_count dl sdsl divsufsort divsufsort64)
+target_compile_options(parsebwtNT64.x PUBLIC "-DP64")
+
+add_executable(bebwtNT.x ebwt.cpp utils.c)
+target_link_libraries(bebwtNT.x malloc_count dl gsacak sdsl divsufsort divsufsort64)
+
+add_executable(bebwtNTp64.x ebwt.cpp utils.c)
+target_link_libraries(bebwtNTp64.x malloc_count dl gsacak sdsl divsufsort divsufsort64)
+target_compile_options(bebwtNTp64.x PUBLIC "-DP64")
+
+add_executable(bebwtNTd64.x ebwt.cpp utils.c)
+target_link_libraries(bebwtNTd64.x malloc_count dl z gsacak64 sdsl divsufsort divsufsort64)
+target_compile_options(bebwtNTd64.x PUBLIC "-DM64")
+
+add_executable(bebwtNT64.x ebwt.cpp utils.c)
+target_link_libraries(bebwtNT64.x malloc_count dl gsacak64 sdsl divsufsort divsufsort64)
 target_compile_options(bebwtNT64.x PUBLIC "-DM64")
 target_compile_options(bebwtNT64.x PUBLIC "-DP64")
 

@@ -31,8 +31,6 @@ public:
     std::vector<uint32_t> offset;
     sdsl::sd_vector<> b_il;
     sdsl::sd_vector<> b_st;
-    sdsl::sd_vector<>::select_1_type select_ilist;
-    sdsl::sd_vector<>::rank_1_type rank_st;
     
     bool saP_flag = false;
     bool ilP_flag = false;
@@ -87,6 +85,17 @@ public:
     temp.clear();
     
     clearVectors();
+
+    // serialize parse data structures
+    std::string output = filename + std::string(".sdsl");
+    std::ofstream out(output);
+    b_il.serialize(out);
+    //select_ilist.serialize(out);
+    b_st.serialize(out);
+    //rank_st.serialize(out);
+    my_serialize(ilP,out);
+    my_serialize(offset,out);
+    out.close();
     
    }
     
@@ -153,6 +162,7 @@ public:
         }
         onset_il.push_back(ilP.size());
         // initalize bit vectors
+        //std::cout << onset_il.size() << std::endl;
         sdsl::sd_vector_builder builder_il(ilP.size()+1,onset_il.size());
         for(auto idx: onset_il){builder_il.set(idx);}
         b_il = sdsl::sd_vector<>(builder_il);
@@ -160,8 +170,8 @@ public:
         for(auto idx: onset_st){builder_st.set(idx);}
         b_st = sdsl::sd_vector<>(builder_st);
         // initialize support for rank and select
-        rank_st = sdsl::sd_vector<>::rank_1_type(&b_st);
-        select_ilist = sdsl::sd_vector<>::select_1_type(&b_il);
+        //rank_st = sdsl::sd_vector<>::rank_1_type(&b_st);
+        //select_ilist = sdsl::sd_vector<>::select_1_type(&b_il);
 
     }
     
@@ -169,10 +179,9 @@ public:
         std::cout << "Checking parse size." << std::endl;
         if(p.size() > pow(2,32) - 1) {
             std::cerr << "Input containing more than 2^32 - 1 words" << std::endl;
-            std::cout << pow(2,32) - 1 << std::endl;
-            std::cout << p.size() << std::endl;
-            die("Input containing more than 2^32-1 phrases!\n");
-            die("Please use 64 bit version\n");
+            std::cerr << pow(2,32) - 1 << std::endl;
+            std::cerr << p.size() << std::endl;
+            std::cerr << "Please use 64 bit version." << std::endl;
             exit(1); }
     }
     
