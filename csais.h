@@ -1,10 +1,13 @@
 /*
- * Circular SAIS implementation to compute the circular SA of an integer vector.
+ * Circular SAIS and SACA implementations to compute the circular SA of an integer vector.
  * 
  * This code is adapted from https://github.com/kurpicz/saca-bench/blob/master/sa-is/sais.cpp
- * which is the original code of the SA-IS algorithm listed below
+ * which is the original code of the SA-IS algorithm listed below, and 
+ * from https://github.com/felipelouza/gsa-is/blob/master/gsacak.c which is an implementation
+ * of the GSACA-K algorithm.
  *
- * csais_int(s, SA, n, K, b_s) // computes circular SA of an integer vector. 
+ * csais_int(s, SA, n, K, b_s) // computes circular SA of an integer vector using cSAIS. 
+ * csaca_int(s, SA, n, K, b_s) // computes circular SA of an integer vector using cSACA. 
  *
  */
 // This is the sample code for the SA-IS algorithm presented in
@@ -45,9 +48,8 @@
 
 typedef uint32_t uint_p;
 
-// TODO: Replace sdsl::bit_vector with sdsl::sd_vector
 /**
- * @brief Compute the suffix array 
+ * @brief Compute the suffix array of a string of integers using cSAIS algorithm
  * 
  * @param s input string
  * @param SA suffix array
@@ -56,6 +58,17 @@ typedef uint32_t uint_p;
  * @param b_s bitvector of the starting phrases of the parse
  */
 void csais_int(uint_p *s, uint_s *SA, size_t n, size_t K, sdsl::sd_vector<> &b_s);
+
+/**
+ * @brief Compute the suffix array of a string of integers using cSACA algorithm 
+ * 
+ * @param s input string
+ * @param SA suffix array
+ * @param n length of the input string
+ * @param K alphabet size
+ * @param b_s bitvector of the starting phrases of the parse
+ */
+void csaca_int(uint_p *s, uint_s *SA, size_t n, size_t K, sdsl::sd_vector<> &b_s);
 
 
 

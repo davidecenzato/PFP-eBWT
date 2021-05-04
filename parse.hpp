@@ -106,9 +106,11 @@ public:
             // suffix array of the parse.
             verbose("Computing cSA of the parse");
             _elapsed_time(
-                // build SA using circular SA-IS algorithm
                 std::cout << "Starting computing cSA" << std::endl;
-                csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
+                // build SA using circular SA-IS algorithm
+                // csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
+                // build SA using circular SACA algorithm
+                csaca_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
             );
         }
         
@@ -122,28 +124,6 @@ public:
                 );
         }
     }
-    
-    /*
-    void buildBitIl(){
-        
-        // initialize bit vector of the inverted list
-        // initialize bit vector of the words at the end of parse phrases
-        b_il.resize(ilP.size()+1);
-        b_st.resize(ilP.size());
-        b_il[0]=1; b_il[ilP.size()]=1;
-        uint_p prev = ebwtP[ilP[0]];
-        if(b_d[saP[ilP[0]]]==1){b_st[0]=1;}else{b_st[0]=0;}
-        for(size_t i=1;i<ilP.size();i++)
-        {   
-            if(b_d[saP[ilP[i]]]==1){b_st[i]=1;}else{b_st[i]=0;}
-            uint_p next = ebwtP[ilP[i]];
-            if(next!=prev){b_il[i]=1;}
-            else{b_il[i]=0;}
-            prev = next;
-        }
-        rank_st = sdsl::bit_vector::rank_1_type(&b_st);
-        select_ilist = sdsl::bit_vector::select_1_type(&b_il);
-    }*/
 
     void buildBitIl(){
         
@@ -162,17 +142,12 @@ public:
         }
         onset_il.push_back(ilP.size());
         // initalize bit vectors
-        //std::cout << onset_il.size() << std::endl;
         sdsl::sd_vector_builder builder_il(ilP.size()+1,onset_il.size());
         for(auto idx: onset_il){builder_il.set(idx);}
         b_il = sdsl::sd_vector<>(builder_il);
         sdsl::sd_vector_builder builder_st(ilP.size(),onset_st.size());
         for(auto idx: onset_st){builder_st.set(idx);}
         b_st = sdsl::sd_vector<>(builder_st);
-        // initialize support for rank and select
-        //rank_st = sdsl::sd_vector<>::rank_1_type(&b_st);
-        //select_ilist = sdsl::sd_vector<>::select_1_type(&b_il);
-
     }
     
     void checkParseSize(){
@@ -207,8 +182,6 @@ public:
                 ebwtP[i] = pc;
             }  
         }
-        //rank_b_d.~rank_support();
-        //select_b_d.~select_support();
         p.clear();
     }
          
