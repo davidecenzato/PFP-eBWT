@@ -129,25 +129,26 @@ void induceS(uint_s *SA, uint_s *s, uint_s *bkt, vector<uint_s>& singletons, sd_
 // compute length of a LMS substring for SACA
 uint_s LMSlength(uint_s *s, uint_s sb, uint_s eb, int level, uint_s x, size_t cs) {
   // return the length of the LMS substring
-  uint_s len=1;  
+  uint_s len=1, i=1;  
   uint_s prev = x, pos = 0;
-  if(x == eb){ pos = sb; }else{ pos = ++x; }
-  // scan S suffixes
+  if(x == eb){ pos = sb; }else{ pos = x+1; }
+  // S suffixes
   while(true) {
     if(chr(pos)<chr(prev)){ break; }
-    ++len;
+    ++i;
     if(pos == eb) { pos = sb; } else{ ++pos;  }
     if(prev == eb){ prev = sb; }else{ ++prev; }
   }  
-  // scan L suffixes
+  // L suffixes
   while(true) {
     if(chr(pos)>chr(prev)){ break; }
-    ++len;
+    if(chr(pos)<chr(prev)){ len=i; }
+    ++i;
     if(pos == eb) { pos = sb; } else{ ++pos;  }
     if(prev == eb){ prev = sb; }else{ ++prev; }
   }
-  
-  return len;
+  // return the length
+  return len+1;
 }
 
 // find the circular suffix array SA of s[0..n-1] in {0..K-1}^n
