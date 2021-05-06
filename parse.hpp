@@ -13,6 +13,7 @@
 
 #include "common.hpp"
 #include "csais.h"
+// #include "malloc_count.h"
 
 class parse{
 private:
@@ -49,6 +50,8 @@ public:
     alphabet_size = *std::max_element(p.begin(),p.end());
     size = p.size();
   
+    //   std::cout << "Memory peak-eparse: " << malloc_count_peak() << std::endl;
+
     #if P64 == 0
         // if we are in 32 bit mode, check that parse has less than 2^32-2 words
         checkParseSize();
@@ -57,6 +60,7 @@ public:
     // read starting positions
     tmp_filename = filename + std::string(".start");
     read_file(tmp_filename.c_str(), sts);
+        // std::cout << "Memory peak-start: " << malloc_count_peak() << std::endl;
     // create bit vector for starting positions
     ////std::vector<size_t> onset;
     ////for(size_t i=0;i<sts.size();i++){onset.push_back(sts[i]);}
@@ -66,10 +70,12 @@ public:
     for(auto idx: sts){builder.set(idx);}
     b_d = sdsl::sd_vector<>(builder);
     //sts.clear();
-    
+    // std::cout << "Memory peak-b_d: " << malloc_count_peak() << std::endl;
     build(saP_flag_, ilP_flag_);
     
+    // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
     buildBitIl();
+    // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
 
     std::vector<uint32_t> temp(offset.size(),0);
     tmp_filename = filename + std::string(".offset");
@@ -100,9 +106,10 @@ public:
    }
     
     void build(bool saP_flag_, bool ilP_flag_){
-        
+        size_t p_size = p.size();
         if(saP_flag_){
-            saP.resize(p.size());
+            saP.resize(p_size);
+            // std::cout << "Current memory before csaca: " << malloc_count_current() << std::endl;
             // suffix array of the parse.
             verbose("Computing cSA of the parse");
             _elapsed_time(
@@ -113,15 +120,24 @@ public:
                 csaca_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
             );
         }
-        
+        // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
+        // std::cout << "Current memory: " << malloc_count_current() << std::endl;
         if(ilP_flag_){
-            ebwtP.resize(p.size());
-            ilP.resize(p.size());
+            ebwtP.resize(p_size);
             verbose("Computing Inverted List of the parse");
             _elapsed_time(
                 makeEBWT();
+                // std::cout << "Current memory after eBWT: " << malloc_count_current() << std::endl;
+                // std::cout << "Memory peak after eBWT: " << malloc_count_peak() << std::endl;
+                p.clear(); p.shrink_to_fit();
+                // std::cout << "Current memory after deleting P: " << malloc_count_current() << std::endl;
+                ilP.resize(p_size);
                 countingSort(ebwtP,ilP);
+                // std::cout << "Current memory after ilP: " << malloc_count_current() << std::endl;
+                // std::cout << "Memory peak after ilP: " << malloc_count_peak() << std::endl;
                 );
+        }else{
+            p.clear(); p.shrink_to_fit();
         }
     }
 
@@ -186,7 +202,7 @@ public:
     }
          
     
-    void countingSort(std::vector<uint_p> vec, std::vector<uint_s> &out)
+    void countingSort(std::vector<uint_p> &vec, std::vector<uint_s> &out)
     {
         std::vector<uint_s> count(alphabet_size,0);
         for(size_t i=0; i<vec.size(); ++i)
@@ -194,16 +210,18 @@ public:
             uint_p cs = vec[i];
             count[cs]++;
         }  
-        std::vector<uint_s> psum(count.size(),0);
+        uint_s prev_c = count[0];
+        count[0] = 0;
         for(size_t i=1; i<count.size(); ++i)
         {
-            psum[i] = psum[i-1] + count[i-1];
+            uint_s tmp = count[i];
+            count[i] = count[i-1] + prev_c;
+            prev_c = tmp;
         }  
-        count.clear();
         for (size_t i = 0; i < vec.size(); ++i)
         {
             uint_p cs = vec[i];
-            uint_s index = psum[cs]++;
+            uint_s index = count[cs]++;
             out[index] = i;
         }
     }
