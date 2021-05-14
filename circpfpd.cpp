@@ -143,7 +143,7 @@ struct KR_window {
   int current;
   int *window;
   int asize;
-  const uint64_t prime = 1999999973;
+  const uint64_t prime = 1999999913;
   uint64_t hash;
   uint64_t tot_char;
   uint64_t asize_pot;   // asize^(wsize-1) mod prime
