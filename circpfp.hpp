@@ -1,3 +1,10 @@
+/*
+ * Multithread PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.hpp
+ *
+ */
+
 extern "C" {
 #include "xerrors.h"
 }
@@ -18,14 +25,6 @@ typedef struct {
   size_t parsed, words;  // output
   FILE *parse, *o;
 } mt_data;
-
-/*
-bool is_valid_base(char base) {
-    switch (base) {
-        case 'A': case 'C': case 'G': case 'T': case 'N': return true;
-        default: return false;
-    }
-}*/
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
 void *cyclic_mt_parse_fasta(void *dx)

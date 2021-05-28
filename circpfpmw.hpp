@@ -1,5 +1,10 @@
-
-// Insert header
+/*
+ * Multithread PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * This version can use multiple primes to find trigger strings in the sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp
+ *
+ */
 
 #ifndef CIRCPFPMW_H
 #define CIRCPFPMW_H
@@ -31,6 +36,7 @@ typedef struct {
   int th_id;
 } mt_data;
 
+// skip filtered sequences
 void skip_seq(uint64_t &nseq, uint64_t &current_pos, size_t &next_tr, size_t &tr_i,
               string &filt_seq, uint8_t &c, ifstream &f, mt_data &d){
     
@@ -42,11 +48,10 @@ void skip_seq(uint64_t &nseq, uint64_t &current_pos, size_t &next_tr, size_t &tr
         if(tr_i+1 < to_remove_mt[d.th_id].size()){ ++tr_i; next_tr = to_remove_mt[d.th_id][tr_i]; }
         else{next_tr = 0;}
     }
-    while(  ((c = f.get()) != EOF) && current_pos < d.true_end ){
+    while( ((c = f.get()) != EOF) && current_pos < d.true_end ){
         current_pos++;
         if(c=='\n'){break;}
     }
-
 }
 
 // modified from mt_parse to skip newlines and fasta header lines (ie. lines starting with ">")
@@ -378,7 +383,5 @@ Res parallel_parse_fasta(Args& arg, map<uint64_t,word_stats>& wf, bool mode)
     Res res; res.tot_char = tot_char; res.us_th = nt; res.nw = wind_n;
     return res;
 }
-
-
 
 #endif /* CIRCPFPMW_H */

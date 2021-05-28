@@ -3,7 +3,7 @@
 import sys, time, argparse, subprocess, os.path
 
 Description = """
-Tool to build the EBWT for higly repetive files.
+Tool to build the eBWT of string collections.
 """
 
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -23,16 +23,15 @@ invertNT_exe      =  os.path.join(dirname, "invertNT.x")
 
 def main():
     parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('input', help='input file name', type=str)
+    parser.add_argument('input', help='input fasta file name', type=str)
     parser.add_argument('-w', '--wsize', help='sliding window size (def. 10)', default=10, type=int)
     parser.add_argument('-p', '--mod', help='hash modulus (def. 100)', default=100, type=int)
     parser.add_argument('-t', help='number of helper threads (def. None)', default=0, type=int)
-    parser.add_argument('-n', help='number KR-windows (def. None)', default=1, type=int)
-    #parser.add_argument('-i', help='number KR-windows (def. None)', default=0, type=int)
+    parser.add_argument('-n', help='number of different primes (def. 1)', default=1, type=int)
     parser.add_argument('-r', help='store eBWT in RLE format (def. False)', action='store_true')
-    parser.add_argument('-v',  help='verbose',action='store_true')
-    parser.add_argument('-d',  help='verbose',action='store_true')
-    parser.add_argument('--reads', help='process input ad a read set (def. False)', action='store_true')
+    parser.add_argument('-v',  help='verbose (def. False)',action='store_true')
+    parser.add_argument('-d',  help='use remainders instead of primes (def. False)',action='store_true')
+    parser.add_argument('--reads', help='process input ad a reads multiset (def. False)', action='store_true')
     parser.add_argument('--period', help='remove periodic sequences (def. False)', action='store_true')
     parser.add_argument('--invert', help='invert the eBWT (def. False)', action='store_true')
     parser.add_argument('--keep',  help='keep auxiliary files (debug only)',action='store_false')
@@ -49,7 +48,9 @@ def main():
         start0 = start = time.time()
 
         if args.reads:
+            # Input is a short sequences multiset
             if args.d:
+                # Use different remainders
                 if args.t>0:
                     command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
                             exe = os.path.join(args.bigbwt_dir,parseReadsD_exe),
@@ -59,6 +60,7 @@ def main():
                             exe = os.path.join(args.bigbwt_dir,parseReadsDNT_exe),
                             wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
             else:
+                # Use different primes
                 if args.t>0:
                     command = "{exe} {file} -w {wsize} -p {modulus} -t {th} -n {wnumb}".format(
                             exe = os.path.join(args.bigbwt_dir,parseReads_exe),
@@ -68,6 +70,7 @@ def main():
                             exe = os.path.join(args.bigbwt_dir,parseReadsNT_exe),
                             wsize=args.wsize, modulus = args.mod, wnumb = args.n, file=args.input)
         else:
+            # Input is a long sequences multiset
             if args.t>0:
                 command = "{exe} {file} -w {wsize} -p {modulus} -t {th}".format(
                         exe = os.path.join(args.bigbwt_dir,parse_exe),
@@ -78,8 +81,9 @@ def main():
                         wsize=args.wsize, modulus = args.mod, file=args.input)
 
 
-        #if (args.i > 0): command += " -i " + str(args.i)
+        # Verbose
         if args.v: command += " -v"
+        # Remove periodic sequences
         if args.period: command += " -c"
 
         print("==== Parsing. Command:", command)
@@ -140,7 +144,7 @@ def main():
                         exe = os.path.join(args.bigbwt_dir,bebwtNT_exe), wsize=args.wsize, file=args.input)
 
 
-        if(args.r): command += " -r"
+        if(args.r): command += " -r" # Activate rle 
         print("==== Computing eBWT of Text. Command:", command)
         if(execute_command(command,logfile,logfile_name)!=True):
             return

@@ -1,3 +1,11 @@
+/*
+ * PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * This version can use multiple primes to find trigger strings in the sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp
+ *
+ */
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -42,9 +50,6 @@ vector<uint64_t> primes{1999999913, 1999999927, 2000000011, 2000000089, 19999999
 vector<uint64_t> primelw{999999929, 999999937, 1000000021, 1000000033, 1000000009, 1000000007, 1000000181, 1000000223,
                          1000000289, 1000000297, 1000000321, 1000000363, 1000000409, 1000000427, 1000000531, 1000000613,
                          1000000829, 1000000787, 1000001011, 1000001053, 1000001099, 1000001137, 1000001161, 1000001203};
-
-vector<uint64_t> primesh{27162335252586509, 28162335252586519, 29162335252586561, 30162335252586539};
-uint64_t prime_kr;
 
 // vectors containing sequences to be filtered
 vector<uint64_t> to_remove;
@@ -206,6 +211,8 @@ struct KR_window {
   
 };
 
+// function to compute the Longest Proper Suffix (LPS) array used in KMP algorithm.
+// code adapted from: "geeksforgeeks.org/kmp-algorithm-for-pattern-searching"
 void LPS(string &str, uint16_t n, vector<uint16_t> &lps){
     
     uint16_t len = 0, i; //lenght of the previous longest prefix suffix
@@ -237,7 +244,6 @@ uint64_t kr_hash(string s) {
     uint64_t hash = 0;
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
     const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
-    //const uint64_t prime = primesh[arg.i];
     for(size_t k=0;k<s.size();k++) {
       int c = (unsigned char) s[k];
       assert(c>=0 && c< 256);
@@ -595,7 +601,6 @@ int main(int argc, char** argv) {
     cout << "Maximum window number allowed: " << arg.n << endl;
     
     if(arg.w<5){ primes = primelw; }
-    prime_kr = primesh[arg.i];
     
     // measure elapsed wall clock time
     time_t start_main = time(NULL);

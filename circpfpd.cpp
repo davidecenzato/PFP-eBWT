@@ -1,3 +1,10 @@
+/*
+ * PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * This version can use multiple remainders to find trigger strings in the sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp
+ *
+ */
 
 #include <iostream>
 #include <string>
@@ -191,6 +198,8 @@ struct KR_window {
   
 };
 
+// function to compute the Longest Proper Suffix (LPS) array used in KMP algorithm.
+// code adapted from: "geeksforgeeks.org/kmp-algorithm-for-pattern-searching"
 void LPS(string &str, uint16_t n, vector<uint16_t> &lps){
     
     uint16_t len = 0, i; //lenght of the previous longest prefix suffix

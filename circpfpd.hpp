@@ -1,14 +1,9 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/* 
- * File:   circpfpdmt.hpp
- * Author: hejans
+ * Multithread PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * This version can use multiple remainders to find trigger strings in the sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp
  *
- * Created on April 14, 2021, 2:51 PM
  */
 
 #ifndef CIRCPFPDMT_HPP

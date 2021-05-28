@@ -10,7 +10,7 @@ endif()
 
 # About this project
 # ------------------------------------------------------------------------------
-project(BigeBWT)
+project(PFPeBWT)
 SET(VERSION_MAJOR "0")
 SET(VERSION_MINOR "1")
 SET(VERSION_PATCH "0")
@@ -100,4 +100,4 @@ target_link_libraries(bebwtNT64.x malloc_count dl gsacak64 sdsl divsufsort divsu
 target_compile_options(bebwtNT64.x PUBLIC "-DM64")
 target_compile_options(bebwtNT64.x PUBLIC "-DP64")
 
-configure_file(${PROJECT_SOURCE_DIR}/bebwt ${PROJECT_BINARY_DIR}/bebwt)
+configure_file(${PROJECT_SOURCE_DIR}/pfpebwt ${PROJECT_BINARY_DIR}/pfpebwt)

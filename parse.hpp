@@ -7,7 +7,6 @@
 #ifndef PARSE_HPP
 #define PARSE_HPP
 
-
 #include <sys/stat.h>
 #include <algorithm>
 
@@ -60,22 +59,14 @@ public:
     // read starting positions
     tmp_filename = filename + std::string(".start");
     read_file(tmp_filename.c_str(), sts);
-        // std::cout << "Memory peak-start: " << malloc_count_peak() << std::endl;
     // create bit vector for starting positions
-    ////std::vector<size_t> onset;
-    ////for(size_t i=0;i<sts.size();i++){onset.push_back(sts[i]);}
-    ////onset.push_back(size);
     sts.push_back(size);
     sdsl::sd_vector_builder builder(size+1,sts.size());
     for(auto idx: sts){builder.set(idx);}
     b_d = sdsl::sd_vector<>(builder);
-    //sts.clear();
-    // std::cout << "Memory peak-b_d: " << malloc_count_peak() << std::endl;
     build(saP_flag_, ilP_flag_);
     
-    // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
-    buildBitIl();
-    // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
+    buildBitIl(); // build Inverted List
 
     std::vector<uint32_t> temp(offset.size(),0);
     tmp_filename = filename + std::string(".offset");
@@ -114,27 +105,18 @@ public:
             verbose("Computing cSA of the parse");
             _elapsed_time(
                 std::cout << "Starting computing cSA" << std::endl;
-                // build SA using circular SA-IS algorithm
-                // csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
-                // build SA using circular SACA algorithm
-                csaca_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
+                // build SA using circular SAIS algorithm
+                csais_int(&p[0],&saP[0], size, alphabet_size+1, b_d);
             );
         }
-        // std::cout << "Memory peak: " << malloc_count_peak() << std::endl;
-        // std::cout << "Current memory: " << malloc_count_current() << std::endl;
         if(ilP_flag_){
             ebwtP.resize(p_size);
             verbose("Computing Inverted List of the parse");
             _elapsed_time(
                 makeEBWT();
-                // std::cout << "Current memory after eBWT: " << malloc_count_current() << std::endl;
-                // std::cout << "Memory peak after eBWT: " << malloc_count_peak() << std::endl;
                 p.clear(); p.shrink_to_fit();
-                // std::cout << "Current memory after deleting P: " << malloc_count_current() << std::endl;
                 ilP.resize(p_size);
                 countingSort(ebwtP,ilP);
-                // std::cout << "Current memory after ilP: " << malloc_count_current() << std::endl;
-                // std::cout << "Memory peak after ilP: " << malloc_count_peak() << std::endl;
                 );
         }else{
             p.clear(); p.shrink_to_fit();
@@ -227,8 +209,6 @@ public:
     }
     
 };
-
-
 
 #endif /* PARSE_HPP */
 

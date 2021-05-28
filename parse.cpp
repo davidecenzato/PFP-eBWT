@@ -1,5 +1,5 @@
 /*
- * Code to build the eBWT of a text using its Prefix Free Parse.
+ * Code to build the eBWT of the circular Prefix Free Parse.
  * 
  */
 
