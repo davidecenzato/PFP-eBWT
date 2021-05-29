@@ -29,7 +29,8 @@ optional arguments:
   --parsing             stop after the parsing phase (debug only)
 ```
 The default algorithm will run with one prime and one remainder to check if a window is a trigger string. If you want to build the eBWT of a collection of short sequences you have to use the `--reads` flag, and set with `-n` the maximum number of different primes allowed. With `-d` you can use different remainders instead of different primes. 
-You can activate the `--period` in case your dataset contains non-primitive word, this flag will allow to filter them out. 
+You can activate the `--period` flag in case your dataset contains non-primitive words, this flag will allow to filter them out. 
+You can activate the `--invert` flag in case you want to invert the eBWT and write sequences to a file, this process requires to load the entire eBWT in memory. 
 
 # Example
 ### Download and Compile
