@@ -1,3 +1,7 @@
+/*
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/utils.h
+ */
+
 // special symbols used by the construction algorithm:
 //   they cannot appear in the input file 
 //   the 0 symbol is used in the final BWT file as the EOF char  

@@ -1,3 +1,7 @@
+/*
+ * This code was originally defined in https://github.com/alshai/Big-BWT/blob/master/utils.c
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>

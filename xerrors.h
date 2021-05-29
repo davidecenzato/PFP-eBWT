@@ -1,3 +1,7 @@
+/*
+ * This code was originally defined in https://github.com/alshai/Big-BWT/blob/master/xerrors.h
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

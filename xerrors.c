@@ -1,10 +1,12 @@
+/*
+ * This code was originally defined in https://github.com/alshai/Big-BWT/blob/master/xerrors.c
+ */
+
 #define _GNU_SOURCE
 #include "xerrors.h"
 
 // xerrors.c
 // system calls with output checking 
-
-
 
 #define Buflen 100
 #define Thread_error_wait 5 
