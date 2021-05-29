@@ -1,3 +1,10 @@
+/*
+ * PFP parse implementation to compute the circular Prefix-free parse of a collection of sequences.
+ * 
+ * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp
+ *
+ */
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -306,7 +313,7 @@ uint64_t parse_fasta(Args& arg, map<uint64_t,word_stats>& wordFreq)
                     save_update_word(next_word,arg.w,wordFreq,parse_file,0); }
             }
         }
-        if(!f_trg) { cerr << "No trigger strings found." << endl; exit(1); }
+        if(!f_trg) { cerr << "No trigger strings found. Please use '--reads' flag. Exiting..." << endl; exit(1); }
         // join first and last word
         string final_word = next_word + first_word.erase(0,arg.w-1);
         save_update_word(final_word,arg.w,wordFreq,parse_file,1);

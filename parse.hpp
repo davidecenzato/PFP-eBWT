@@ -1,5 +1,5 @@
 /*
- * Code to build the inverted list of the eBWT of a circular Prefix Free Parse.
+ * Code to build the inverted list of the eBWT of a circular Prefix-free parse.
  * 
  * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/parse.hpp
  */

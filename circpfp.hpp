@@ -1,5 +1,5 @@
 /*
- * Multithread PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * Multithread Prefix-free parse implementation to compute the circular PFP of sequence collections.
  * 
  * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.hpp
  *
@@ -103,7 +103,7 @@ void *cyclic_mt_parse_fasta(void *dx)
                         d->words++;}
                 }
             }
-            if(first_trigger==0) { cerr << "No trigger strings found." << endl; exit(1); }
+            if(first_trigger==0) { cerr << "No trigger strings found. Please use '--reads' flag. Exiting..." << endl; exit(1); }
             final_word = word + fword.erase(0,arg->w - 1);
             save_update_word(final_word,arg->w,*wordFreq,d->parse,1);
             d->words++; 

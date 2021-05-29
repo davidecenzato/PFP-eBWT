@@ -1,5 +1,5 @@
 /*
- * Code to build the the eBWT of a text using the SA of the dictionary and the Inverted List of the eBWT of the Prefix Free Parse.
+ * Code to build the the eBWT of a text using the SA of the dictionary and the Inverted List of the eBWT of the Prefix-free parse.
  * 
  * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/pfp_thresholds.hpp
  */

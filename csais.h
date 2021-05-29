@@ -6,7 +6,7 @@
  * from https://github.com/felipelouza/gsa-is/blob/master/gsacak.c which is an implementation
  * of the GSACA-K algorithm.
  *
- * csaca_int(s, SA, n, K, b_s) // computes circular SA of an integer vector using cSACA. 
+ * csais_int(s, SA, n, K, b_s) // computes circular SA of an integer vector using cSSAIS. 
  *
  */
 // This is the sample code for the SA-IS algorithm presented in

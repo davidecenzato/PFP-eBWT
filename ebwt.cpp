@@ -1,20 +1,17 @@
 /*
- * Code to build the eBWT of a text using its Prefix Free Parse.
+ * Code to build the eBWT of a text using its Prefix-free parse.
  * 
  */
 
 #include <iostream>
 #include <string>
 #include <vector>
-//#include <algorithm>
 #include <fstream>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctime>
-//#include <queue>
-//#include <tuple>
 #include <assert.h>
 #include <errno.h>
 

@@ -1,5 +1,5 @@
 /*
- * Code to build the SA and LCP arrays of the dictionary of a prefix free parse.
+ * Code to build the SA and LCP arrays of the dictionary of a prefix-free parse.
  * 
  * This code is adapted from https://github.com/maxrossi91/pfp-thresholds/blob/master/include/pfp/dictionary.hpp
  */

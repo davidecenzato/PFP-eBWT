@@ -1,5 +1,5 @@
 /*
- * Multithread PFP parse implementation to compute the circular PFP of a collection of sequences.
+ * Multithread Prefix-free parse implementation to compute the circular PFP of sequence collections.
  * This version can use multiple remainders to find trigger strings in the sequences.
  * 
  * This code is adapted from https://github.com/alshai/Big-BWT/blob/master/newscan.cpp

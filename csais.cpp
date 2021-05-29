@@ -1,5 +1,5 @@
 /*
- * Circular SAIS and SACA implementations to compute the circular SA of an integer vector.
+ * Circular SAIS implementation to compute the circular SA of an integer vector.
  * 
  * This code is adapted from https://github.com/kurpicz/saca-bench/blob/master/sa-is/sais.cpp
  * which is the original code of the SA-IS algorithm listed below, and 

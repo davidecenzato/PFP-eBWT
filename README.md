@@ -1,5 +1,5 @@
 # PFP-eBWT
-Tool to build the eBWT of string collections using the Prefix Free Parse (PFP).
+Tool to build the eBWT of string collections using the Prefix-Free Parse (PFP).
 
 # Usage
 
@@ -28,7 +28,7 @@ optional arguments:
   --keep                keep auxiliary files (debug only)
   --parsing             stop after the parsing phase (debug only)
 ```
-The default algorithm will run with one prime and one remainder to check if a window is a trigger string. If you want to build the eBWT of a collection of short sequences you have to use the `--reads` flag, and set with `-n` the maximum number of primes or remainders (with `-n`) allowed.
+The default algorithm will run with one prime and one remainder to check if a window is a trigger string. If you want to build the eBWT of a collection of short sequences you have to use the `--reads` flag, and set with `-n` the maximum number of different primes allowed. With `-d` you can use different remainders instead of different primes. 
 You can activate the `--period` in case your dataset contains non-primitive word, this flag will allow to filter them out. 
 
 # Example
@@ -55,6 +55,22 @@ python3 pfpebwt yeast.fasta -w 10 -p 100
 * [malloc_count](https://github.com/bingmann/malloc_count)
 * [sdsl-lite](https://github.com/simongog/sdsl-lite)
 
+# Citation 
+
+Please, if you use this tool in an academic setting cite the following paper:
+
+### PFP-eBWT
+    @unpublished{BoucherCLMM21,
+    author = {Christina Boucher and
+              Davide Cenzato and
+              Zsuzsanna Lipták and
+              Massimiliano Rossi and
+              Marinella Sciortino},
+    title = "{Computing the original eBWT faster, simpler, and with less memory}",
+    note = "submitted paper",
+    year=2021
+    }
+
 # Authors
 
 ### Theoretical results:
@@ -72,6 +88,10 @@ python3 pfpebwt yeast.fasta -w 10 -p 100
 
 # References
 
-[1] Christina Boucher, Davide Cenzato, Zsuzsanna Lipták, Massimiliano Rossi and Marinella Sciortino, *"Computing the original eBWT faster, simpler, and with less memory."*, (2021).
+[1] Christina Boucher, Travis Gagie, Alan Kuhnle and Giovanni Manzini, *"Prefix-Free Parsing for Building Big BWTs"*, In Proc. of the 18th International Workshop on Algorithms in Bioinformatics (WABI 2018).
 
 [2] Christina Boucher, Travis Gagie, Alan Kuhnle, Ben Langmead, Giovanni Manzini, and Taher Mun. *"Prefix-free parsing for building big BWTs."*, Algorithms for Molecular Biology 14, no. 1 (2019): 13.
+
+[3] G. Nong, S. Zhang, and W. H. Chan. Two efficient algorithms for linear time suffixarray construction.IEEE Trans Comput, 60(10):1471–1484, 2011.
+
+[4] H. Bannai, J. Karkkainen, D. Koppl, and M. Piatkowski. Constructing the bijective and the extended Burrows-Wheeler-Transform in linear time.  InProc.  of  CPM,2021.
