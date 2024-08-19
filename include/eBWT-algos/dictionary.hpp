@@ -8,7 +8,7 @@
 #define DICTIONARY_HPP
 
 extern "C" {
-    #include "gsa/gsacak.h"
+    #include "gsacak.h"
 }
 
 // TODO: Extend it to integer alphabets

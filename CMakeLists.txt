@@ -12,7 +12,7 @@ endif()
 # ------------------------------------------------------------------------------
 project(PFPeBWT)
 SET(VERSION_MAJOR "0")
-SET(VERSION_MINOR "1")
+SET(VERSION_MINOR "2")
 SET(VERSION_PATCH "0")
 SET(VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 
@@ -28,14 +28,13 @@ else()
     message(WARNING "git not found. Cloning of submodules will not work.")
 endif()
 
-
-
 # Configure thirdparty
 # ------------------------------------------------------------------------------
 set(CMAKE_INSTALL_INCLUDEDIR "include") # This is an hack because include(GUIInstallDirs) doesn't work
 
 add_subdirectory(thirdparty)
 
+add_subdirectory(include)
 
 # Configure the compiler with the appropriate flags
 # ------------------------------------------------------------------------------
@@ -50,54 +49,6 @@ else ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 
-# Targets
 include_directories(${PROJECT_SOURCE_DIR})
-
-add_executable(circpfp.x circpfp.cpp utils.c xerrors.c)
-target_link_libraries(circpfp.x malloc_count z pthread)
-
-add_executable(circpfpr.x circpfpmw.cpp utils.c xerrors.c)
-target_link_libraries(circpfpr.x malloc_count z pthread)
-
-add_executable(circpfpd.x circpfpd.cpp utils.c xerrors.c)
-target_link_libraries(circpfpd.x malloc_count z pthread)
-
-add_executable(circpfpNT.x circpfp.cpp utils.c)
-target_link_libraries(circpfpNT.x malloc_count z)
-target_compile_options(circpfpNT.x PUBLIC "-DNOTHREADS")
-
-add_executable(circpfprNT.x circpfpmw.cpp utils.c)
-target_link_libraries(circpfprNT.x malloc_count z)
-target_compile_options(circpfprNT.x PUBLIC "-DNOTHREADS")
-
-add_executable(circpfpdNT.x circpfpd.cpp utils.c)
-target_link_libraries(circpfpdNT.x malloc_count z)
-target_compile_options(circpfpdNT.x PUBLIC "-DNOTHREADS")
-
-add_executable(invertNT.x invertebwt.cpp common.hpp)
-target_link_libraries(invertNT.x sdsl divsufsort divsufsort64)
-
-add_executable(parsebwtNT.x parse.cpp utils.c csais.cpp)
-target_link_libraries(parsebwtNT.x malloc_count dl sdsl divsufsort divsufsort64)
-
-add_executable(parsebwtNT64.x parse.cpp utils.c csais.cpp)
-target_link_libraries(parsebwtNT64.x malloc_count dl sdsl divsufsort divsufsort64)
-target_compile_options(parsebwtNT64.x PUBLIC "-DP64")
-
-add_executable(bebwtNT.x ebwt.cpp utils.c)
-target_link_libraries(bebwtNT.x malloc_count dl gsacak sdsl divsufsort divsufsort64)
-
-add_executable(bebwtNTp64.x ebwt.cpp utils.c)
-target_link_libraries(bebwtNTp64.x malloc_count dl gsacak sdsl divsufsort divsufsort64)
-target_compile_options(bebwtNTp64.x PUBLIC "-DP64")
-
-add_executable(bebwtNTd64.x ebwt.cpp utils.c)
-target_link_libraries(bebwtNTd64.x malloc_count dl z gsacak64 sdsl divsufsort divsufsort64)
-target_compile_options(bebwtNTd64.x PUBLIC "-DM64")
-
-add_executable(bebwtNT64.x ebwt.cpp utils.c)
-target_link_libraries(bebwtNT64.x malloc_count dl gsacak64 sdsl divsufsort divsufsort64)
-target_compile_options(bebwtNT64.x PUBLIC "-DM64")
-target_compile_options(bebwtNT64.x PUBLIC "-DP64")
 
 configure_file(${PROJECT_SOURCE_DIR}/pfpebwt ${PROJECT_BINARY_DIR}/pfpebwt)

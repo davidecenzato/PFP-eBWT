@@ -24,6 +24,8 @@
 #define EXTSTART "start"
 #define EXTFCHAR "fchar"
 #define EXTFILT  "filtered"
+#define EXTLAST  "last"
+#define EXTFIRST "spos"
 
 void die(const char *s);
 FILE *open_aux_file(const char *base, const char *ext, const char *mode);
@@ -45,4 +47,3 @@ typedef struct multiFile {
 mFile *mopen_aux_file(const char *base, const char *ext, int nsegs);
 int mfclose(mFile *f);
 size_t mfread(void *ptr, size_t size, size_t nmemb, mFile *f);
-

@@ -26,7 +26,6 @@ private:
         bool is_starting = 0;
     } phrase_suffix_t;
 
-
     
     size_t first_occ = 0; // First occurrence of same suffix phrases in BWT_P
     size_t last_occ = 0;     // Last occurrence of same suffix phrases in BWT_P
@@ -274,17 +273,20 @@ public:
         // close rle lengths file if rle was used
         if(rle){ fclose(ebwt_file_len); fclose(ebwt_file_heads);}
         else { fclose(ebwt_file); }   
-        
-        //write characters/runs ratio
-        outfile = filename + std::string(".ebwt.r");
-        if ((nratio = fopen(outfile.c_str(), "wb")) == nullptr)
-            error("open() file " + outfile + " failed");
-        
-        double ratio = double(ins_sofar)/double(runs);
-        
-        if (fwrite(&ratio, sizeof(double), 1, nratio) != 1)
-            error("r ratio write error");
-        fclose(nratio);
+
+        std::string info = "Number of runs of the eBWT: " + std::to_string(runs) + "\n"; 
+        info += "Length of the eBWT: " + std::to_string(ins_sofar) + "\n"; 
+        if(rle)
+        {
+            info += "Number of bytes per eBWT run character (.heads file): 1\n";
+            info += "Number of bytes per eBWT run length (.len file): " + std::to_string(BWTBYTES) + "\n";
+        } 
+        else
+            info += "Number of bytes per eBWT character (.ebwt file): 1\n";
+
+        std::ofstream out(filename + std::string(".info"));
+        out << info;
+        out.close();
         
     }        
 };

@@ -59,11 +59,7 @@
 #define EndOfDict 0  // end of dictionary delimiter
 //******************************************************************************
 
-//using namespace sdsl;
-
 typedef size_t size_type;
-//typedef sd_vector<> bv_t;
-
 
 std::string NowTime();
 void _internal_messageInfo(const std::string message);
@@ -360,6 +356,3 @@ void my_load(std::vector<X> &x, std::istream &in, typename std::enable_if<std::i
   x.resize(size);
   my_load_vector(x, in);
 }
-
-
-
