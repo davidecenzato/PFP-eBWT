@@ -13,7 +13,7 @@ usage: pfpebwt [-h] [-w WSIZE] [-p MOD] [-t T] [-n N] [--rle] [--samples]
 Tool to compute the eBWT and the GCA of a string collection.
 
 positional arguments:
-  input                 input fasta file name
+  input                 input FASTA file name
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -36,8 +36,9 @@ optional arguments:
 The default PFP algorithm will run with one prime number and one remainder to search for the trigger strings. If you need to compute the eBWT of a collection of short sequences, you can use the `--reads` flag to enable the algorithm to search for trigger strings using multiple prime numbers. With the `-n` flag, you can set the maximum number of primes allowed. With `--remainders`, you can enable the algorithm to use multiple remainders (and one prime) instead of multiple primes (and one remainder). 
 You can activate the `--period` flag if your dataset contains non-primitive words; this flag will run an algorithm to filter them out. 
 You can activate the `--invert` flag to invert the eBWT and write the inverted string collection to a file. This process requires computing the WT of the eBWT in the internal memory. 
-You can activate the `--samples` flag to compute the GCA samples at the end and beginning of an eBWT run, the `--GCA` flag enable the computation of the complete GCA. 
-The `.info` file contains more information on the output files.
+You can activate the `--samples` flag to compute the GCA samples at the end and beginning of an eBWT run, and the `--GCA` flag enables the computation of the complete GCA. 
+The `.info` file contains more information on the output files format.
+Note that input sequences in the FASTA file must not contain the `>` character; headers should start at the beginning of a line.
 
 # Example
 ### Download and Compile
@@ -73,12 +74,9 @@ python3 pfpebwt yeast.fasta --GCA
 Computing the Original eBWT Faster, Simpler, and with Less Memory. SPIRE 2021: 129-142 ([go to the paper](https://link.springer.com/chapter/10.1007/978-3-030-86692-1_11)) 
 
 [2] Christina Boucher, Davide Cenzato, Zsuzsanna Lipták, Massimiliano Rossi, Marinella Sciortino:
-Computing the original eBWT faster, simpler, and with less memory. CoRR abs/2106.11191 (2021) ([go to the paper](https://arxiv.org/abs/2106.11191)) 
-
-[3] Christina Boucher, Davide Cenzato, Zsuzsanna Lipták, Massimiliano Rossi, Marinella Sciortino:
 r-indexing the eBWT. Inf. Comput. 298: 105155 (2024) ([go to the paper](https://doi.org/10.1016/j.ic.2024.105155)) 
 
-Please, if you use this tool in an academic setting cite the following papers:
+Please, if you use this tool in an academic setting, cite the following papers:
 
 ### conference version
     @inproceedings{BoucherCL0S21a,
@@ -93,19 +91,6 @@ Please, if you use this tool in an academic setting cite the following papers:
       volume    = {12944},
       pages     = {129--142},
       year      = {2021}
-    }
-
-### extended version
-    @article{extBoucherCL0S21a,
-      author       = {Christina Boucher and
-                      Davide Cenzato and
-                      Zsuzsanna Lipt{\'{a}}k and
-                      Massimiliano Rossi and
-                      Marinella Sciortino},
-      title        = {Computing the original eBWT faster, simpler, and with less memory},
-      journal      = {CoRR},
-      volume       = {abs/2106.11191},
-      year         = {2021},
     }
 
 ### journal paper containing the GCA computation algorithm
